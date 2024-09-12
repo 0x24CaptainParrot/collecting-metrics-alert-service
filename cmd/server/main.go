@@ -97,6 +97,7 @@ func UpdateMetricHandler(storage MetricStorage) http.HandlerFunc {
 			return
 		}
 
+		w.Header().Set("Content-Type", "text/plain")
 		w.WriteHeader(http.StatusOK)
 		fmt.Fprintf(w, "Metric updated successefully")
 	}
