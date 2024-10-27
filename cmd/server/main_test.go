@@ -43,7 +43,7 @@ func TestUpdateMetricHandler(t *testing.T) {
 			name: "invalid metric type",
 			url:  "/update/unknown/testMetric/100",
 			want: want{
-				code: http.StatusNotFound,
+				code: http.StatusBadRequest,
 			},
 		},
 		{
