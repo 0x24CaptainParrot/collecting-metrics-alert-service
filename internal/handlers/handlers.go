@@ -2,57 +2,82 @@ package handlers
 
 import (
 	"fmt"
+	"log"
 	"net/http"
 	"strconv"
 	"strings"
+
+	"github.com/0x24CaptainParrot/collecting-metrics-alert-service.git/internal/storage"
+	"github.com/go-chi/chi/v5"
 )
 
-type MetricStorage interface {
-	UpdateGauge(name string, value float64)
-	UpdateCounter(name string, value int64)
-	GetMetrics() map[string]interface{}
+type Handler struct {
+	storage storage.MetricStorage
 }
 
-func UpdateMetricHandler(storage MetricStorage) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		parts := strings.Split(r.URL.Path, "/")
-		if len(parts) != 5 {
-			http.Error(w, "metric ID required", http.StatusNotFound)
-			return
-		}
+func NewHandler(storage storage.MetricStorage) *Handler {
+	return &Handler{storage: storage}
+}
 
-		metricType := parts[2]
-		metricName := parts[3]
-		metricValue := parts[4]
-
-		switch metricType {
-		case "gauge":
-			value, err := strconv.ParseFloat(metricValue, 64)
-			if err != nil {
-				http.Error(w, "invalid gauge value", http.StatusBadRequest)
-				return
-			}
-			storage.UpdateGauge(metricName, value)
-
-		case "counter":
-			value, err := strconv.ParseInt(metricValue, 10, 64)
-			if err != nil {
-				http.Error(w, "invalid counter value", http.StatusBadRequest)
-				return
-			}
-			storage.UpdateCounter(metricName, value)
-
-		default:
-			http.Error(w, "invalid metric type", http.StatusBadRequest)
-			return
-		}
-
-		w.Header().Set("Content-Type", "text/plain")
-		w.WriteHeader(http.StatusOK)
-		fmt.Fprintf(w, "Metric updated successefully")
+func (h *Handler) UpdateMetricHandler(w http.ResponseWriter, r *http.Request) {
+	parts := strings.Split(r.URL.Path, "/")
+	if len(parts) != 5 {
+		http.Error(w, "metric ID required", http.StatusBadRequest)
+		return
 	}
+
+	metricType := chi.URLParam(r, "type")
+	metricName := chi.URLParam(r, "name")
+	metricValue := chi.URLParam(r, "value")
+
+	switch storage.MetricType(metricType) {
+	case storage.Gauge:
+		value, err := strconv.ParseFloat(metricValue, 64)
+		if err != nil {
+			http.Error(w, "invalid gauge value", http.StatusBadRequest)
+			log.Printf("Error parsing gauge value %s: %v", metricValue, err)
+			return
+		}
+		h.storage.UpdateGauge(metricName, value)
+	case storage.Counter:
+		value, err := strconv.ParseInt(metricValue, 10, 64)
+		if err != nil {
+			http.Error(w, "invalid counter value", http.StatusBadRequest)
+			log.Printf("Error parsing counter value %s: %v", metricValue, err)
+			return
+		}
+		h.storage.UpdateCounter(metricName, value)
+	default:
+		http.Error(w, "invalid metric type", http.StatusNotFound)
+		log.Printf("Invalid metric type: %s", metricType)
+		return
+	}
+
+	w.Header().Set("Content-Type", "text/plain")
+	w.WriteHeader(http.StatusOK)
+	fmt.Fprintf(w, "Metric %s updated successfully", metricName)
 }
 
-func NotFoundHandler(w http.ResponseWriter, r *http.Request) {
-	http.Error(w, "resource not found", http.StatusNotFound)
+func (h *Handler) GetMetricValueHandler(w http.ResponseWriter, r *http.Request) {
+	metricType := storage.MetricType(chi.URLParam(r, "type"))
+	metricName := chi.URLParam(r, "name")
+
+	metric, err := h.storage.GetMetric(metricName, metricType)
+	if err != nil {
+		http.Error(w, "metric not found", http.StatusNotFound)
+		log.Printf("Metric not found: %s %s", metricType, metricName)
+		return
+	}
+	fmt.Fprintf(w, "%v", metric)
+}
+
+func (h *Handler) GetAllMetricsStatic(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "text/html")
+
+	metrics := h.storage.GetMetrics()
+	fmt.Fprintln(w, "<html><body><h1>Metrics:</h1><ul>")
+	for name, val := range metrics {
+		fmt.Fprintf(w, "<li>%s: %v</li>", name, val)
+	}
+	fmt.Fprintln(w, "</ul></body></html>")
 }

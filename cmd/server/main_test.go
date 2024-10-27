@@ -5,7 +5,6 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/0x24CaptainParrot/collecting-metrics-alert-service.git/internal/handlers"
 	"github.com/0x24CaptainParrot/collecting-metrics-alert-service.git/internal/storage"
 	"github.com/stretchr/testify/assert"
 )
@@ -44,7 +43,7 @@ func TestUpdateMetricHandler(t *testing.T) {
 			name: "invalid metric type",
 			url:  "/update/unknown/testMetric/100",
 			want: want{
-				code: http.StatusBadRequest,
+				code: http.StatusNotFound,
 			},
 		},
 		{
@@ -64,13 +63,13 @@ func TestUpdateMetricHandler(t *testing.T) {
 	}
 
 	storage := storage.NewMemStorage()
-	handler := handlers.UpdateMetricHandler(storage)
+	router := NewRouter(storage)
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			req := httptest.NewRequest(http.MethodPost, tc.url, nil)
 			w := httptest.NewRecorder()
-			handler.ServeHTTP(w, req)
+			router.ServeHTTP(w, req)
 
 			res := w.Result()
 			assert.Equal(t, tc.want.code, res.StatusCode)

@@ -1,17 +1,18 @@
 package main
 
 import (
-	"bytes"
 	"fmt"
 	"math/rand/v2"
-	"net/http"
 	"runtime"
 	"strconv"
 	"time"
+
+	"github.com/go-resty/resty/v2"
 )
 
 type Agent struct {
 	pollInterval   time.Duration
+	client         *resty.Client
 	reportInterval time.Duration
 	serverAddress  string
 	pollCount      int64
@@ -19,6 +20,7 @@ type Agent struct {
 
 func NewAgent(serverAddress string, pollInterval, reportInterval time.Duration) *Agent {
 	return &Agent{
+		client:         resty.New(),
 		pollInterval:   pollInterval,
 		reportInterval: reportInterval,
 		serverAddress:  serverAddress,
@@ -82,22 +84,20 @@ func (a *Agent) SendMetrics(metrics map[string]interface{}) {
 		}
 
 		url := fmt.Sprintf("%s/update/%s/%s/%s", a.serverAddress, metricType, metricName, valueStr)
-		req, err := http.NewRequest(http.MethodPost, url, bytes.NewBuffer([]byte("")))
-		if err != nil {
-			fmt.Println("error while creating request", err)
-			continue
-		}
-		req.Header.Set("Content-Type", "text/plain")
+		resp, err := a.client.R().
+			SetHeader("Content-Type", "text/plain").
+			Post(url)
 
-		client := &http.Client{}
-		resp, err := client.Do(req)
 		if err != nil {
 			fmt.Println("error while making the request", err)
 			continue
 		}
 
-		resp.Body.Close()
-		fmt.Printf("Metric: %s has been sent successfully\n", metricName)
+		if resp.IsSuccess() {
+			fmt.Printf("Metric: %s has been sent successfully\n", metricName)
+		} else {
+			fmt.Printf("Failed to send metric %s: %s\n", metricName, resp.Status())
+		}
 	}
 }
 

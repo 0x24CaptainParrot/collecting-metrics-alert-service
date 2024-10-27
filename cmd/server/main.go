@@ -6,30 +6,28 @@ import (
 
 	"github.com/0x24CaptainParrot/collecting-metrics-alert-service.git/internal/handlers"
 	"github.com/0x24CaptainParrot/collecting-metrics-alert-service.git/internal/storage"
+	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/chi/v5/middleware"
 )
 
-type MetricType string
+func NewRouter(storage storage.MetricStorage) http.Handler {
+	r := chi.NewRouter()
+	r.Use(middleware.Logger)
 
-const (
-	Gauge   MetricType = "gauge"
-	Counter MetricType = "counter"
-)
+	h := handlers.NewHandler(storage)
+	r.Post("/update/{type}/{name}/{value}", h.UpdateMetricHandler)
+	r.Get("/value/{type}/{name}", h.GetMetricValueHandler)
+	r.Get("/", h.GetAllMetricsStatic)
 
-type MetricStorage interface {
-	UpdateGauge(name string, value float64)
-	UpdateCounter(name string, value int64)
-	GetMetrics() map[string]interface{}
+	return r
 }
 
 func main() {
-	serveMux := http.NewServeMux()
-	memStorage := storage.NewMemStorage()
-
-	serveMux.HandleFunc("/update/", handlers.UpdateMetricHandler(memStorage))
-	serveMux.HandleFunc("/", handlers.NotFoundHandler)
+	storage := storage.NewMemStorage()
+	router := NewRouter(storage)
 
 	log.Println("starting server on :8080")
-	if err := http.ListenAndServe(":8080", serveMux); err != nil {
+	if err := http.ListenAndServe(":8080", router); err != nil {
 		log.Fatalf("Error occured starting server: %v", err)
 	}
 }
