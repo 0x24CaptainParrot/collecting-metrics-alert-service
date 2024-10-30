@@ -26,6 +26,7 @@ func parseAgentFlags() {
 
 	parsedUrl, err := url.Parse(agentConfig.endpointAddr)
 	if err != nil || parsedUrl.Scheme == "" {
-		agentConfig.endpointAddr = "http://localhost" + agentConfig.endpointAddr
+		agentConfig.endpointAddr = "http://" + agentConfig.endpointAddr
 	}
+	log.Printf("Agent will connect to %s", agentConfig.endpointAddr)
 }
