@@ -88,6 +88,7 @@ func (h *Handler) GetMetricValueHandler(w http.ResponseWriter, r *http.Request) 
 	w.Header().Set("Content-Type", "text/json")
 	w.WriteHeader(http.StatusOK)
 	fmt.Fprintf(w, "%v", metric)
+	log.Printf("Metric retrieved: %s %s = %v", metricType, metricName, metric)
 }
 
 func (h *Handler) GetAllMetricsStatic(w http.ResponseWriter, r *http.Request) {
@@ -99,4 +100,5 @@ func (h *Handler) GetAllMetricsStatic(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprintf(w, "<li>%s: %v</li>", name, val)
 	}
 	fmt.Fprintln(w, "</ul></body></html>")
+	log.Println("All metrics retrieved in HTML format")
 }
