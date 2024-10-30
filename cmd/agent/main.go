@@ -123,7 +123,13 @@ func (a *Agent) Start() {
 }
 
 func main() {
-	agent := NewAgent("http://localhost:8080", 2*time.Second, 10*time.Second)
+	parseAgentFlags()
+
+	agent := NewAgent(
+		agentConfig.endpointAddr,
+		time.Duration(agentConfig.pollInterval)*time.Second,
+		time.Duration(agentConfig.reportInterval)*time.Second)
+
 	fmt.Println("Starting agent")
 	agent.Start()
 }

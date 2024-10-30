@@ -26,8 +26,9 @@ func main() {
 	storage := storage.NewMemStorage()
 	router := NewRouter(storage)
 
-	log.Println("starting server on :8080")
-	if err := http.ListenAndServe(":8080", router); err != nil {
+	parseServerFlags()
+	log.Printf("starting server on %s", runServerAddrFlag)
+	if err := http.ListenAndServe(runServerAddrFlag, router); err != nil {
 		log.Fatalf("Error occured starting server: %v", err)
 	}
 }
