@@ -1,6 +1,8 @@
 package main
 
 import (
+	"flag"
+	"fmt"
 	"log"
 	"net/http"
 
@@ -20,6 +22,18 @@ func NewRouter(storage storage.MetricStorage) http.Handler {
 	r.Get("/", h.GetAllMetricsStatic)
 
 	return r
+}
+
+var runServerAddrFlag string
+
+func parseServerFlags() {
+	flag.StringVar(&runServerAddrFlag, "a", ":8080", "server listens on this port")
+	flag.Parse()
+
+	if len(flag.Args()) > 0 {
+		fmt.Printf("Unknown flags %v\n", flag.Args())
+		log.Fatal("Error: unknown flags were given")
+	}
 }
 
 func main() {
