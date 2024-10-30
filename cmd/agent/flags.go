@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"net/url"
+	"strings"
 )
 
 var agentConfig struct {
@@ -14,7 +15,7 @@ var agentConfig struct {
 }
 
 func parseAgentFlags() {
-	flag.StringVar(&agentConfig.endpointAddr, "a", "http://localhost:8080", "endpoint addr of the server")
+	flag.StringVar(&agentConfig.endpointAddr, "a", "localhost:8080", "endpoint addr of the server")
 	flag.IntVar(&agentConfig.reportInterval, "r", 10, "report interval")
 	flag.IntVar(&agentConfig.pollInterval, "p", 2, "poll interval")
 	flag.Parse()
@@ -28,5 +29,14 @@ func parseAgentFlags() {
 	if err != nil || parsedUrl.Scheme == "" {
 		agentConfig.endpointAddr = "http://" + agentConfig.endpointAddr
 	}
+
+	if !startsWithHTTP(agentConfig.endpointAddr) {
+		agentConfig.endpointAddr = "http://" + agentConfig.endpointAddr
+	}
+
 	log.Printf("Agent will connect to %s", agentConfig.endpointAddr)
+}
+
+func startsWithHTTP(addr string) bool {
+	return strings.HasPrefix(addr, "http://") || strings.HasPrefix(addr, "https://")
 }

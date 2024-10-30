@@ -4,7 +4,6 @@ import (
 	"flag"
 	"fmt"
 	"log"
-	"strings"
 )
 
 var runServerAddrFlag string
@@ -18,12 +17,12 @@ func parseServerFlags() {
 		log.Fatal("Error: unknown flags were given")
 	}
 
-	if !startsWithHTTP(runServerAddrFlag) {
-		runServerAddrFlag = "http://" + runServerAddrFlag
-	}
+	// if !startsWithHTTP(runServerAddrFlag) {
+	// 	runServerAddrFlag = "http://" + runServerAddrFlag
+	// }
 	log.Printf("Server will run on %s", runServerAddrFlag)
 }
 
-func startsWithHTTP(addr string) bool {
-	return strings.HasPrefix(addr, "http://") || strings.HasPrefix(addr, "https://")
-}
+// func startsWithHTTP(addr string) bool {
+// 	return strings.HasPrefix(addr, "http://") || strings.HasPrefix(addr, "https://")
+// }

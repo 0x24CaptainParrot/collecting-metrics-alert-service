@@ -126,7 +126,7 @@ func main() {
 	parseAgentFlags()
 
 	agent := NewAgent(
-		"http://"+agentConfig.endpointAddr,
+		agentConfig.endpointAddr,
 		time.Duration(agentConfig.pollInterval)*time.Second,
 		time.Duration(agentConfig.reportInterval)*time.Second)
 
