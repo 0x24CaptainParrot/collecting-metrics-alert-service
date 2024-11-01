@@ -32,10 +32,6 @@ func parseAgentFlags() {
 		agentConfig.endpointAddr = "http://" + agentConfig.endpointAddr
 	}
 
-	if !startsWithHTTP(agentConfig.endpointAddr) {
-		agentConfig.endpointAddr = "http://" + agentConfig.endpointAddr
-	}
-
 	if envRunAgent := os.Getenv("ADDRESS"); envRunAgent != "" {
 		agentConfig.endpointAddr = envRunAgent
 	}
@@ -50,6 +46,10 @@ func parseAgentFlags() {
 		if err != nil {
 			log.Fatalf("error occured: %v", err)
 		}
+	}
+
+	if !startsWithHTTP(agentConfig.endpointAddr) {
+		agentConfig.endpointAddr = "http://" + agentConfig.endpointAddr
 	}
 
 	log.Printf("Agent will connect to %s", agentConfig.endpointAddr)
