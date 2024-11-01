@@ -126,9 +126,9 @@ func main() {
 	parseAgentFlags()
 
 	agent := NewAgent(
-		agentConfig.endpointAddr,
-		time.Duration(agentConfig.pollInterval)*time.Second,
-		time.Duration(agentConfig.reportInterval)*time.Second)
+		agentCfg.endpointAddr,
+		time.Duration(agentCfg.pollInterval)*time.Second,
+		time.Duration(agentCfg.reportInterval)*time.Second)
 
 	fmt.Println("Starting agent")
 	agent.Start()
