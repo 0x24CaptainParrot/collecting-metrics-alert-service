@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"log"
 	"net/url"
+	"os"
+	"strconv"
 	"strings"
 
 	"github.com/caarlos0/env/v6"
@@ -39,21 +41,21 @@ func parseAgentFlags() {
 		log.Printf("error occured while parsing env variables: %v", err)
 	}
 
-	// if envRunAgent := os.Getenv("ADDRESS"); envRunAgent != "" {
-	// 	agentCfg.endpointAddr = envRunAgent
-	// }
-	// if envReportInt := os.Getenv("REPORT_INTERVAL"); envReportInt != "" {
-	// 	agentCfg.reportInterval, err = strconv.Atoi(envReportInt)
-	// 	if err != nil {
-	// 		log.Fatalf("error occured: %v", err)
-	// 	}
-	// }
-	// if envPollInt := os.Getenv("POLL_INTERVAL"); envPollInt != "" {
-	// 	agentCfg.pollInterval, err = strconv.Atoi(envPollInt)
-	// 	if err != nil {
-	// 		log.Fatalf("error occured: %v", err)
-	// 	}
-	// }
+	if envRunAgent := os.Getenv("ADDRESS"); envRunAgent != "" {
+		agentCfg.endpointAddr = envRunAgent
+	}
+	if envReportInt := os.Getenv("REPORT_INTERVAL"); envReportInt != "" {
+		agentCfg.reportInterval, err = strconv.Atoi(envReportInt)
+		if err != nil {
+			log.Fatalf("error occured: %v", err)
+		}
+	}
+	if envPollInt := os.Getenv("POLL_INTERVAL"); envPollInt != "" {
+		agentCfg.pollInterval, err = strconv.Atoi(envPollInt)
+		if err != nil {
+			log.Fatalf("error occured: %v", err)
+		}
+	}
 
 	if !startsWithHTTP(agentCfg.endpointAddr) {
 		agentCfg.endpointAddr = "http://" + agentCfg.endpointAddr
