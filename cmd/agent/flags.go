@@ -5,13 +5,15 @@ import (
 	"fmt"
 	"log"
 	"net/url"
+	"os"
+	"strconv"
 	"strings"
 )
 
 var agentConfig struct {
-	endpointAddr   string
-	reportInterval int
-	pollInterval   int
+	endpointAddr   string `env:"ADDRESS"`
+	reportInterval int    `env:"REPORT_INTERVAL"`
+	pollInterval   int    `env:"POLL_INTERVAL"`
 }
 
 func parseAgentFlags() {
@@ -34,7 +36,25 @@ func parseAgentFlags() {
 		agentConfig.endpointAddr = "http://" + agentConfig.endpointAddr
 	}
 
+	if envRunAgent := os.Getenv("ADDRESS"); envRunAgent != "" {
+		agentConfig.endpointAddr = envRunAgent
+	}
+	if envReportInt := os.Getenv("REPORT_INTERVAL"); envReportInt != "" {
+		agentConfig.reportInterval, err = strconv.Atoi(envReportInt)
+		if err != nil {
+			log.Fatalf("error occured: %v", err)
+		}
+	}
+	if envPollInt := os.Getenv("POLL_INTERVAL"); envPollInt != "" {
+		agentConfig.pollInterval, err = strconv.Atoi(envPollInt)
+		if err != nil {
+			log.Fatalf("error occured: %v", err)
+		}
+	}
+
 	log.Printf("Agent will connect to %s", agentConfig.endpointAddr)
+	log.Printf("Agent's reportInt: %d", agentConfig.reportInterval)
+	log.Printf("Agent's pollInt: %d", agentConfig.pollInterval)
 }
 
 func startsWithHTTP(addr string) bool {

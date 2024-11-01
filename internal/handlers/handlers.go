@@ -19,13 +19,6 @@ func NewHandler(storage storage.MetricStorage) *Handler {
 }
 
 func (h *Handler) UpdateMetricHandler(w http.ResponseWriter, r *http.Request) {
-	// parts := strings.Split(r.URL.Path, "/")
-	// if len(parts) != 5 {
-	// 	http.Error(w, "metric ID required", http.StatusBadRequest)
-	// 	log.Printf("Metric id was not given")
-	// 	return
-	// }
-
 	metricType := chi.URLParam(r, "type")
 	if storage.MetricType(metricType) != storage.Gauge && storage.MetricType(metricType) != storage.Counter {
 		http.Error(w, "unknown type was given", http.StatusBadRequest)
