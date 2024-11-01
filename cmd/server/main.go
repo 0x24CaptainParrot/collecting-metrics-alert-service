@@ -27,8 +27,8 @@ func main() {
 	router := NewRouter(storage)
 
 	parseServerFlags()
-	log.Printf("starting server on %s", runServerAddrFlag)
-	if err := http.ListenAndServe(runServerAddrFlag, router); err != nil {
+	log.Printf("starting server on %s", serverCfg.runServerAddrFlag)
+	if err := http.ListenAndServe(serverCfg.runServerAddrFlag, router); err != nil {
 		log.Fatalf("Error occured starting server: %v", err)
 	}
 }

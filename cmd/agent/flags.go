@@ -38,7 +38,7 @@ func parseAgentFlags() {
 
 	err = env.Parse(&agentCfg)
 	if err != nil {
-		log.Printf("error occured while parsing env variables: %v", err)
+		log.Printf("error occured while parsing agent env variables: %v", err)
 	}
 
 	if envRunAgent := os.Getenv("ADDRESS"); envRunAgent != "" {
