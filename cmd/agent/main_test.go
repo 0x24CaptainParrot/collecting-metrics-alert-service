@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/0x24CaptainParrot/collecting-metrics-alert-service.git/internal/metrics"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -54,11 +55,11 @@ func TestAgentFunctions(t *testing.T) {
 			defer ts.Close()
 
 			// Запускаем агента с адресом тестового сервера
-			agent := NewAgent(ts.URL, 2*time.Second, 10*time.Second)
+			agent := metrics.NewAgent(ts.URL, 2*time.Second, 10*time.Second)
 
 			// Устанавливаем начальный pollCount и проверяем его значение перед сбором метрик
-			agent.pollCount = tc.pollBefore
-			assert.Equal(t, tc.pollBefore, agent.pollCount, "Initial PollCount should be set correctly")
+			agent.SetPollCount(tc.pollBefore)
+			assert.Equal(t, tc.pollBefore, agent.GetPollCount(), "Initial PollCount should be set correctly")
 
 			// Собираем метрики
 			metrics := agent.CollectRuntimeMetrics()
@@ -67,7 +68,7 @@ func TestAgentFunctions(t *testing.T) {
 			if tc.want.randomValueCheck {
 				assert.Greater(t, metrics["RandomValue"].(float64), 0.0, "RandomValue should be greater than 0")
 			}
-			assert.Equal(t, tc.want.pollCount, agent.pollCount, "PollCount should increment after each poll")
+			assert.Equal(t, tc.want.pollCount, agent.GetPollCount(), "PollCount should increment after each poll")
 
 			// Отправка метрик
 			agent.SendMetrics(tc.metrics)

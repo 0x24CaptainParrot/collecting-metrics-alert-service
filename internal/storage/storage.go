@@ -1,6 +1,7 @@
 package storage
 
 import (
+	"errors"
 	"fmt"
 	"sync"
 )
@@ -11,13 +12,6 @@ const (
 	Gauge   MetricType = "gauge"
 	Counter MetricType = "counter"
 )
-
-type MetricStorage interface {
-	UpdateGauge(name string, value float64)
-	UpdateCounter(name string, value int64)
-	GetMetric(name string, metricType MetricType) (interface{}, error)
-	GetMetrics() map[string]interface{}
-}
 
 type MemStorage struct {
 	gauges   map[string]float64
@@ -32,16 +26,29 @@ func NewMemStorage() *MemStorage {
 	}
 }
 
-func (ms *MemStorage) UpdateGauge(name string, value float64) {
+func (ms *MemStorage) UpdateGauge(name string, value float64) error {
+	if value < 0 {
+		return errors.New("given gauge value cannot be negative")
+	}
+
 	ms.mu.Lock()
 	defer ms.mu.Unlock()
 	ms.gauges[name] = value
+	return nil
 }
 
-func (ms *MemStorage) UpdateCounter(name string, value int64) {
+func (ms *MemStorage) UpdateCounter(name string, value int64) error {
+	if value < 0 {
+		return errors.New("given counter value cannot be negative")
+	}
+
 	ms.mu.Lock()
 	defer ms.mu.Unlock()
+	if _, exists := ms.counters[name]; !exists {
+		ms.counters[name] = 0
+	}
 	ms.counters[name] += value
+	return nil
 }
 
 func (ms *MemStorage) GetMetric(name string, metricType MetricType) (interface{}, error) {

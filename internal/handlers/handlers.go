@@ -41,7 +41,11 @@ func (h *Handler) UpdateMetricHandler(w http.ResponseWriter, r *http.Request) {
 			log.Printf("Error parsing gauge value %s: %v", metricValue, err)
 			return
 		}
-		h.storage.UpdateGauge(metricName, value)
+		if err := h.storage.UpdateGauge(metricName, value); err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			log.Printf("Failed to update gauge: %s: %v", metricName, err)
+			return
+		}
 	case storage.Counter:
 		value, err := strconv.ParseInt(metricValue, 10, 64)
 		if err != nil {
@@ -49,7 +53,11 @@ func (h *Handler) UpdateMetricHandler(w http.ResponseWriter, r *http.Request) {
 			log.Printf("Error parsing counter value %s: %v", metricValue, err)
 			return
 		}
-		h.storage.UpdateCounter(metricName, value)
+		if err := h.storage.UpdateCounter(metricName, value); err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			log.Printf("Failed to update counter: %s: %v", metricName, err)
+			return
+		}
 	default:
 		http.Error(w, "invalid metric type", http.StatusNotFound)
 		log.Printf("Invalid metric type: %s", metricType)

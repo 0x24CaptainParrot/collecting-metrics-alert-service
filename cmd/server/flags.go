@@ -9,6 +9,10 @@ import (
 	"github.com/caarlos0/env/v6"
 )
 
+const (
+	serverDefaultAddress = "localhost:8080"
+)
+
 type serverConfig struct {
 	runServerAddrFlag string `env:"ADDRESS"`
 }
@@ -16,7 +20,7 @@ type serverConfig struct {
 var serverCfg serverConfig
 
 func parseServerFlags() {
-	flag.StringVar(&serverCfg.runServerAddrFlag, "a", "localhost:8080", "server listens on this port")
+	flag.StringVar(&serverCfg.runServerAddrFlag, "a", serverDefaultAddress, "server listens on this port")
 	flag.Parse()
 
 	if len(flag.Args()) > 0 {
@@ -32,6 +36,8 @@ func parseServerFlags() {
 	envRunServer := os.Getenv("ADDRESS")
 	if envRunServer != "" {
 		serverCfg.runServerAddrFlag = envRunServer
+		log.Printf("Server configuration was changed via env variable.")
+		log.Printf("ADDRESS was changed via env variable. (%s)", envRunServer)
 	}
 
 	log.Printf("Server will run on %s", serverCfg.runServerAddrFlag)

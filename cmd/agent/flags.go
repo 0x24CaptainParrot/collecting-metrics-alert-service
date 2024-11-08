@@ -12,6 +12,12 @@ import (
 	"github.com/caarlos0/env/v6"
 )
 
+const (
+	agentDefaultAddress   = "localhost:8080"
+	agentDefaultReportInt = 10
+	agentDefaultPollInt   = 2
+)
+
 type agentConfig struct {
 	endpointAddr   string `env:"ADDRESS"`
 	reportInterval int    `env:"REPORT_INTERVAL"`
@@ -21,9 +27,9 @@ type agentConfig struct {
 var agentCfg agentConfig
 
 func parseAgentFlags() {
-	flag.StringVar(&agentCfg.endpointAddr, "a", "localhost:8080", "endpoint addr of the server")
-	flag.IntVar(&agentCfg.reportInterval, "r", 10, "report interval")
-	flag.IntVar(&agentCfg.pollInterval, "p", 2, "poll interval")
+	flag.StringVar(&agentCfg.endpointAddr, "a", agentDefaultAddress, "endpoint addr of the server")
+	flag.IntVar(&agentCfg.reportInterval, "r", agentDefaultReportInt, "report interval")
+	flag.IntVar(&agentCfg.pollInterval, "p", agentDefaultPollInt, "poll interval")
 	flag.Parse()
 
 	if len(flag.Args()) > 0 {
@@ -43,18 +49,22 @@ func parseAgentFlags() {
 
 	if envRunAgent := os.Getenv("ADDRESS"); envRunAgent != "" {
 		agentCfg.endpointAddr = envRunAgent
+		log.Printf("Agent configuration was changed via env variables.")
+		log.Printf("ADDRESS was changed via env variable. (%s)", envRunAgent)
 	}
 	if envReportInt := os.Getenv("REPORT_INTERVAL"); envReportInt != "" {
 		agentCfg.reportInterval, err = strconv.Atoi(envReportInt)
 		if err != nil {
 			log.Fatalf("error occured: %v", err)
 		}
+		log.Printf("REPORT_INTERVAL was changed via env variable. (%s)", envReportInt)
 	}
 	if envPollInt := os.Getenv("POLL_INTERVAL"); envPollInt != "" {
 		agentCfg.pollInterval, err = strconv.Atoi(envPollInt)
 		if err != nil {
 			log.Fatalf("error occured: %v", err)
 		}
+		log.Printf("POLL_INTERVAL was changed via env variable. (%s)", envPollInt)
 	}
 
 	if !startsWithHTTP(agentCfg.endpointAddr) {
