@@ -5,6 +5,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"github.com/0x24CaptainParrot/collecting-metrics-alert-service.git/internal/service"
 	"github.com/0x24CaptainParrot/collecting-metrics-alert-service.git/internal/storage"
 	"github.com/stretchr/testify/assert"
 )
@@ -63,7 +64,8 @@ func TestUpdateMetricHandler(t *testing.T) {
 	}
 
 	storage := storage.NewMemStorage()
-	router := NewRouter(storage)
+	services := service.NewService(storage)
+	router := NewRouter(services)
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {

@@ -10,14 +10,6 @@ import (
 	"github.com/go-chi/chi/v5"
 )
 
-type Handler struct {
-	storage storage.MetricStorage
-}
-
-func NewHandler(storage storage.MetricStorage) *Handler {
-	return &Handler{storage: storage}
-}
-
 func (h *Handler) UpdateMetricHandler(w http.ResponseWriter, r *http.Request) {
 	metricType := chi.URLParam(r, "type")
 	if storage.MetricType(metricType) != storage.Gauge && storage.MetricType(metricType) != storage.Counter {
@@ -41,7 +33,7 @@ func (h *Handler) UpdateMetricHandler(w http.ResponseWriter, r *http.Request) {
 			log.Printf("Error parsing gauge value %s: %v", metricValue, err)
 			return
 		}
-		if err := h.storage.UpdateGauge(metricName, value); err != nil {
+		if err := h.services.Storage.UpdateGauge(metricName, value); err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			log.Printf("Failed to update gauge: %s: %v", metricName, err)
 			return
@@ -53,7 +45,7 @@ func (h *Handler) UpdateMetricHandler(w http.ResponseWriter, r *http.Request) {
 			log.Printf("Error parsing counter value %s: %v", metricValue, err)
 			return
 		}
-		if err := h.storage.UpdateCounter(metricName, value); err != nil {
+		if err := h.services.Storage.UpdateCounter(metricName, value); err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			log.Printf("Failed to update counter: %s: %v", metricName, err)
 			return
@@ -79,7 +71,7 @@ func (h *Handler) GetMetricValueHandler(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	metric, err := h.storage.GetMetric(metricName, metricType)
+	metric, err := h.services.Storage.GetMetric(metricName, metricType)
 	if err != nil {
 		http.Error(w, "metric not found", http.StatusNotFound)
 		log.Printf("Metric not found: %s %s", metricType, metricName)
@@ -95,7 +87,7 @@ func (h *Handler) GetMetricValueHandler(w http.ResponseWriter, r *http.Request) 
 func (h *Handler) GetAllMetricsStatic(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html")
 
-	metrics := h.storage.GetMetrics()
+	metrics := h.services.Storage.GetMetrics()
 	fmt.Fprintln(w, "<html><body><h1>Metrics:</h1><ul>")
 	for name, val := range metrics {
 		fmt.Fprintf(w, "<li>%s: %v</li>", name, val)
