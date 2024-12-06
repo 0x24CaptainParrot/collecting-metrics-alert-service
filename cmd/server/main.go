@@ -10,10 +10,10 @@ import (
 	"time"
 
 	"github.com/0x24CaptainParrot/collecting-metrics-alert-service.git/internal/handlers"
+	"github.com/0x24CaptainParrot/collecting-metrics-alert-service.git/internal/logger"
 	"github.com/0x24CaptainParrot/collecting-metrics-alert-service.git/internal/service"
 	"github.com/0x24CaptainParrot/collecting-metrics-alert-service.git/internal/storage"
 	"github.com/go-chi/chi/v5"
-	"github.com/go-chi/chi/v5/middleware"
 )
 
 type Server struct {
@@ -37,7 +37,7 @@ func (s *Server) Shutdown(ctx context.Context) error {
 
 func NewRouter(service *service.Service) http.Handler {
 	r := chi.NewRouter()
-	r.Use(middleware.Logger)
+	r.Use(logger.LoggingHttpMiddleware(logger.Log))
 
 	h := handlers.NewHandler(service)
 	r.Post("/update/{type}/{name}/{value}", h.UpdateMetricHandler)
@@ -55,6 +55,11 @@ func main() {
 	srv := &Server{}
 
 	parseServerFlags()
+	if err := logger.InitializeLogger(serverCfg.logLevel); err != nil {
+		log.Fatalf("Failed to initialize logger: %v", err)
+	}
+	defer logger.Log.Sync()
+
 	log.Printf("starting server on %s", serverCfg.runServerAddrFlag)
 	go func() {
 		if err := srv.Run(serverCfg.runServerAddrFlag, router); err != nil {
