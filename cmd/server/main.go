@@ -14,6 +14,7 @@ import (
 	"github.com/0x24CaptainParrot/collecting-metrics-alert-service.git/internal/service"
 	"github.com/0x24CaptainParrot/collecting-metrics-alert-service.git/internal/storage"
 	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/chi/v5/middleware"
 )
 
 type Server struct {
@@ -37,6 +38,7 @@ func (s *Server) Shutdown(ctx context.Context) error {
 
 func NewRouter(service *service.Service) http.Handler {
 	r := chi.NewRouter()
+	r.Use(middleware.Logger)
 	r.Use(logger.LoggingHttpMiddleware(logger.Log))
 
 	h := handlers.NewHandler(service)
