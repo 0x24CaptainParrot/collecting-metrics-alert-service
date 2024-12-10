@@ -7,6 +7,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/0x24CaptainParrot/collecting-metrics-alert-service.git/internal/models"
 	"github.com/go-resty/resty/v2"
 )
 
@@ -103,6 +104,43 @@ func (a *Agent) SendMetrics(metrics map[string]interface{}) {
 
 		if resp.IsSuccess() {
 			fmt.Printf("Metric: %s has been sent successfully\n", metricName)
+		} else {
+			fmt.Printf("Failed to send metric %s: %s\n", metricName, resp.Status())
+		}
+	}
+}
+
+func (a *Agent) SendJSONMetrics(metrics map[string]interface{}) {
+	for metricName, metricVal := range metrics {
+		metric := models.Metrics{
+			ID:    metricName,
+			MType: "",
+		}
+
+		switch v := metricVal.(type) {
+		case float64:
+			metric.MType = "gauge"
+			metric.Value = &v
+		case int64:
+			metric.MType = "counter"
+			metric.Delta = &v
+		default:
+			continue
+		}
+
+		url := fmt.Sprintf("%s/update", a.serverAddress)
+		resp, err := a.client.R().
+			SetHeader("Content-Type", "application/json").
+			SetBody(metric).
+			Post(url)
+
+		if err != nil {
+			fmt.Println("error sending metric", err)
+			continue
+		}
+
+		if resp.IsSuccess() {
+			fmt.Printf("Metric: %s has been sent successfully in the JSON format.\n", metricName)
 		} else {
 			fmt.Printf("Failed to send metric %s: %s\n", metricName, resp.Status())
 		}
