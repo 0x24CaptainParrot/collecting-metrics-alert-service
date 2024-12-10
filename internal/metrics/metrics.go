@@ -162,7 +162,7 @@ func (a *Agent) Start() {
 			}
 			fmt.Println("Metrics have been collected.")
 		case <-tickerReport.C:
-			// a.SendMetrics(metrics)
+			a.SendMetrics(metrics)
 			a.SendJSONMetrics(metrics)
 			fmt.Println("Metrics have been sent.")
 		}
