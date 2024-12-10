@@ -1,11 +1,13 @@
 package handlers
 
 import (
+	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
 	"strconv"
 
+	"github.com/0x24CaptainParrot/collecting-metrics-alert-service.git/internal/models"
 	"github.com/0x24CaptainParrot/collecting-metrics-alert-service.git/internal/storage"
 	"github.com/go-chi/chi/v5"
 )
@@ -94,4 +96,89 @@ func (h *Handler) GetAllMetricsStatic(w http.ResponseWriter, r *http.Request) {
 	}
 	fmt.Fprintln(w, "</ul></body></html>")
 	log.Println("All metrics retrieved in HTML format")
+}
+
+// json metric handlers/methods
+func (h *Handler) UpdateMetricJSONHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Header.Get("Content-Type") != "application/json" {
+		http.Error(w, "invalid media type was given", http.StatusUnsupportedMediaType)
+		return
+	}
+
+	var metric models.Metrics
+	if err := json.NewDecoder(r.Body).Decode(&metric); err != nil {
+		http.Error(w, "invalid data was given", http.StatusBadRequest)
+		return
+	}
+
+	switch metric.MType {
+	case "gauge":
+		if metric.Value == nil {
+			http.Error(w, "missing value for gauge type", http.StatusBadRequest)
+			return
+		}
+		if err := h.services.Storage.UpdateGauge(metric.ID, *metric.Value); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+	case "counter":
+		if metric.Delta == nil {
+			http.Error(w, "missing value for counter type", http.StatusBadRequest)
+			return
+		}
+		if err := h.services.Storage.UpdateCounter(metric.ID, *metric.Delta); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+	default:
+		http.Error(w, "invalid metric type", http.StatusBadRequest)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(metric)
+}
+
+func (h *Handler) GetMetricJSONHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Header.Get("Content-Type") != "application/json" {
+		http.Error(w, "invalid media type was given", http.StatusUnsupportedMediaType)
+		return
+	}
+
+	var metric models.Metrics
+	if err := json.NewDecoder(r.Body).Decode(&metric); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	var resultMetric models.Metrics
+	resultMetric.ID = metric.ID
+	resultMetric.MType = metric.MType
+
+	switch metric.MType {
+	case "gauge":
+		val, err := h.services.Storage.GetMetric(metric.ID, storage.Gauge)
+		if err != nil {
+			http.Error(w, "metric not found", http.StatusNotFound)
+			return
+		}
+		value := val.(float64)
+		resultMetric.Value = &value
+	case "counter":
+		val, err := h.services.Storage.GetMetric(metric.ID, storage.Counter)
+		if err != nil {
+			http.Error(w, "metric not found", http.StatusNotFound)
+			return
+		}
+		delta := val.(int64)
+		resultMetric.Delta = &delta
+	default:
+		http.Error(w, "invalid metric type was given", http.StatusBadRequest)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(resultMetric)
 }
