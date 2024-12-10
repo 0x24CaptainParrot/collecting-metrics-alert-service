@@ -42,8 +42,8 @@ func NewRouter(service *service.Service) http.Handler {
 	r.Use(logger.LoggingHttpMiddleware(logger.Log))
 
 	h := handlers.NewHandler(service)
-	r.Post("/update", h.UpdateMetricJSONHandler)
-	r.Post("/value", h.GetMetricJSONHandler)
+	r.Post("/update/", h.UpdateMetricJSONHandler)
+	r.Post("/value/", h.GetMetricJSONHandler)
 	r.Post("/update/{type}/{name}/{value}", h.UpdateMetricHandler)
 	r.Get("/value/{type}/{name}", h.GetMetricValueHandler)
 	r.Get("/", h.GetAllMetricsStatic)

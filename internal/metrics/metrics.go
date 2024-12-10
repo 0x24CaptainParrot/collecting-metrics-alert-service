@@ -128,7 +128,7 @@ func (a *Agent) SendJSONMetrics(metrics map[string]interface{}) {
 			continue
 		}
 
-		url := fmt.Sprintf("%s/update", a.serverAddress)
+		url := fmt.Sprintf("%s/update/", a.serverAddress)
 		resp, err := a.client.R().
 			SetHeader("Content-Type", "application/json").
 			SetBody(metric).
@@ -162,7 +162,8 @@ func (a *Agent) Start() {
 			}
 			fmt.Println("Metrics have been collected.")
 		case <-tickerReport.C:
-			a.SendMetrics(metrics)
+			// a.SendMetrics(metrics)
+			a.SendJSONMetrics(metrics)
 			fmt.Println("Metrics have been sent.")
 		}
 	}
