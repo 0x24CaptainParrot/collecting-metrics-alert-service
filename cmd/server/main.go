@@ -11,6 +11,7 @@ import (
 
 	"github.com/0x24CaptainParrot/collecting-metrics-alert-service.git/internal/handlers"
 	"github.com/0x24CaptainParrot/collecting-metrics-alert-service.git/internal/logger"
+	"github.com/0x24CaptainParrot/collecting-metrics-alert-service.git/internal/middlewares"
 	"github.com/0x24CaptainParrot/collecting-metrics-alert-service.git/internal/service"
 	"github.com/0x24CaptainParrot/collecting-metrics-alert-service.git/internal/storage"
 	"github.com/go-chi/chi/v5"
@@ -40,6 +41,7 @@ func NewRouter(service *service.Service) http.Handler {
 	r := chi.NewRouter()
 	r.Use(middleware.Logger)
 	r.Use(logger.LoggingHttpMiddleware(logger.Log))
+	r.Use(middlewares.GzipMiddleware)
 
 	h := handlers.NewHandler(service)
 	r.Post("/update/", h.UpdateMetricJSONHandler)

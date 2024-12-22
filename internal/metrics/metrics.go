@@ -1,6 +1,9 @@
 package metrics
 
 import (
+	"bytes"
+	"compress/gzip"
+	"encoding/json"
 	"fmt"
 	"math/rand/v2"
 	"runtime"
@@ -147,6 +150,52 @@ func (a *Agent) SendJSONMetrics(metrics map[string]interface{}) {
 	}
 }
 
+func (a *Agent) SendGzipJSONMetrics(metrics map[string]interface{}) {
+	for metricName, metricVal := range metrics {
+		metric := models.Metrics{
+			ID:    metricName,
+			MType: "",
+		}
+
+		switch v := metricVal.(type) {
+		case float64:
+			metric.MType = "gauge"
+			metric.Value = &v
+		case int64:
+			metric.MType = "counter"
+			metric.Delta = &v
+		default:
+			continue
+		}
+
+		var buff bytes.Buffer
+		gz := gzip.NewWriter(&buff)
+		if err := json.NewEncoder(gz).Encode(metric); err != nil {
+			fmt.Println("Failed to encode metric:", err)
+			continue
+		}
+		gz.Close()
+
+		url := fmt.Sprintf("%s/update/", a.serverAddress)
+		resp, err := a.client.R().
+			SetHeader("Content-Type", "application/json").
+			SetHeader("Content-Encoding", "gzip").
+			SetBody(buff.Bytes()).
+			Post(url)
+
+		if err != nil {
+			fmt.Println("Error sending gzip metric:", err)
+			continue
+		}
+
+		if resp.IsSuccess() {
+			fmt.Printf("Gzip metric %s sent successfully.\n", metricName)
+		} else {
+			fmt.Printf("Failed to send gzip metric %s: %s\n", metricName, resp.Status())
+		}
+	}
+}
+
 func (a *Agent) Start() {
 	tickerPoll := time.NewTicker(a.pollInterval)
 	tickerReport := time.NewTicker(a.reportInterval)
@@ -164,6 +213,7 @@ func (a *Agent) Start() {
 		case <-tickerReport.C:
 			a.SendMetrics(metrics)
 			a.SendJSONMetrics(metrics)
+			a.SendGzipJSONMetrics(metrics)
 			fmt.Println("Metrics have been sent.")
 		}
 	}
