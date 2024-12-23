@@ -5,6 +5,7 @@ import (
 	"io"
 	"net/http"
 	"strings"
+	"sync"
 )
 
 type CompressWriter struct {
@@ -12,10 +13,18 @@ type CompressWriter struct {
 	zw *gzip.Writer
 }
 
+var gzipWriterPool = sync.Pool{
+	New: func() interface{} {
+		return gzip.NewWriter(nil)
+	},
+}
+
 func NewCompressWriter(w http.ResponseWriter) *CompressWriter {
+	zw := gzipWriterPool.Get().(*gzip.Writer)
+	zw.Reset(w)
 	return &CompressWriter{
 		ResponseWriter: w,
-		zw:             gzip.NewWriter(w),
+		zw:             zw,
 	}
 }
 
@@ -33,8 +42,9 @@ func (cw *CompressWriter) WriteHeader(statusCode int) {
 	cw.ResponseWriter.WriteHeader(statusCode)
 }
 
-func (cw *CompressWriter) Close() error {
-	return cw.zw.Close()
+func (cw *CompressWriter) Close() {
+	_ = cw.zw.Close()
+	gzipWriterPool.Put(cw.zw)
 }
 
 type CompressReader struct {
@@ -42,9 +52,16 @@ type CompressReader struct {
 	zr *gzip.Reader
 }
 
+var gzipReaderPool = sync.Pool{
+	New: func() interface{} {
+		return &gzip.Reader{}
+	},
+}
+
 func NewCompressReader(r io.ReadCloser) (*CompressReader, error) {
-	zr, err := gzip.NewReader(r)
-	if err != nil {
+	zr := gzipReaderPool.Get().(*gzip.Reader)
+	if err := zr.Reset(r); err != nil {
+		gzipReaderPool.Put(zr)
 		return nil, err
 	}
 	return &CompressReader{
@@ -58,15 +75,18 @@ func (cr *CompressReader) Read(p []byte) (int, error) {
 }
 
 func (cr *CompressReader) Close() error {
-	if err := cr.ReadCloser.Close(); err != nil {
-		return err
-	}
-	return cr.zr.Close()
+	err := cr.ReadCloser.Close()
+	cr.zr.Close()
+	gzipReaderPool.Put(cr.zr)
+	return err
 }
 
 func GzipMiddleware(h http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if strings.Contains(r.Header.Get("Accept-Encoding"), "gzip") {
+		contentType := r.Header.Get("Content-Type")
+		acceptsGzip := strings.Contains(r.Header.Get("Accept-Encoding"), "gzip")
+
+		if acceptsGzip && IsCompressibleContentType(contentType) {
 			cw := NewCompressWriter(w)
 			defer cw.Close()
 			w = cw
@@ -84,4 +104,14 @@ func GzipMiddleware(h http.Handler) http.Handler {
 
 		h.ServeHTTP(w, r)
 	})
+}
+
+var compressibleTypes = map[string]struct{}{
+	"text/html":        {},
+	"application/json": {},
+}
+
+func IsCompressibleContentType(contentType string) bool {
+	_, ok := compressibleTypes[contentType]
+	return ok
 }
