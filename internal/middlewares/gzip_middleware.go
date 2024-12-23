@@ -36,7 +36,7 @@ func (cw *CompressWriter) Write(p []byte) (int, error) {
 }
 
 func (cw *CompressWriter) WriteHeader(statusCode int) {
-	if statusCode < 300 {
+	if statusCode < 300 && IsCompressibleContentType(cw.Header().Get("Content-Type")) {
 		cw.Header().Set("Content-Encoding", "gzip")
 	}
 	cw.ResponseWriter.WriteHeader(statusCode)
@@ -106,12 +106,16 @@ func GzipMiddleware(h http.Handler) http.Handler {
 	})
 }
 
-var compressibleTypes = map[string]struct{}{
-	"text/html":        {},
-	"application/json": {},
+var compressibleTypes = []string{
+	"text/html",
+	"application/json",
 }
 
 func IsCompressibleContentType(contentType string) bool {
-	_, ok := compressibleTypes[contentType]
-	return ok
+	for _, ct := range compressibleTypes {
+		if strings.HasPrefix(contentType, ct) {
+			return true
+		}
+	}
+	return false
 }
