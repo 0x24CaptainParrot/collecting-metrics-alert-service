@@ -80,7 +80,7 @@ func (h *Handler) GetMetricValueHandler(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	w.Header().Set("Content-Type", "text/json")
+	w.Header().Set("Content-Type", "text/plain")
 	w.WriteHeader(http.StatusOK)
 	fmt.Fprintf(w, "%v", metric)
 	log.Printf("Metric retrieved: %s %s = %v", metricType, metricName, metric)

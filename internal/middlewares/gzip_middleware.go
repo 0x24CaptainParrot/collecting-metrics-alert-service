@@ -2,6 +2,7 @@ package middlewares
 
 import (
 	"compress/gzip"
+	"fmt"
 	"io"
 	"net/http"
 	"strings"
@@ -43,7 +44,9 @@ func (cw *CompressWriter) WriteHeader(statusCode int) {
 }
 
 func (cw *CompressWriter) Close() {
-	_ = cw.zw.Close()
+	if err := cw.zw.Close(); err != nil {
+		fmt.Printf("Error closing gzip writer: %v\n", err)
+	}
 	gzipWriterPool.Put(cw.zw)
 }
 
@@ -76,6 +79,9 @@ func (cr *CompressReader) Read(p []byte) (int, error) {
 
 func (cr *CompressReader) Close() error {
 	err := cr.ReadCloser.Close()
+	if err != nil {
+		fmt.Printf("Error closing original reader: %v\n", err)
+	}
 	cr.zr.Close()
 	gzipReaderPool.Put(cr.zr)
 	return err
