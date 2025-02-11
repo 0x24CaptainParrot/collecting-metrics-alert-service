@@ -143,7 +143,7 @@ func (ms *MemStorage) LoadMetricsFromFile(filePath string) error {
 	}
 
 	for _, m := range metrics {
-		if m.MType == "guage" && m.Value != nil {
+		if m.MType == "gauge" && m.Value != nil {
 			ms.gauges[m.ID] = *m.Value
 		} else if m.MType == "counter" && m.Delta != nil {
 			ms.counters[m.ID] = *m.Delta

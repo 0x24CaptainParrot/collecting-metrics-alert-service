@@ -61,7 +61,7 @@ func (h *Handler) UpdateMetricHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if StoreInterval == 0 {
+	if StoreInterval == 0 || StoreInterval > 0 {
 		if err := h.services.Storage.SaveMetricsToFile(FileStoragePath); err != nil {
 			log.Printf("Failed to save metrics to file: %v", err)
 		}
@@ -149,7 +149,7 @@ func (h *Handler) UpdateMetricJSONHandler(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	if StoreInterval == 0 {
+	if StoreInterval == 0 || StoreInterval > 0 {
 		if err := h.services.Storage.SaveMetricsToFile(FileStoragePath); err != nil {
 			log.Printf("Failed to save metrics to file: %v", err)
 		}
