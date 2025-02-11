@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"log"
-	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
@@ -49,12 +48,10 @@ func main() {
 
 	log.Printf("starting server on %s", serverCfg.runServerAddrFlag)
 	go func() {
-		err := srv.Run(serverCfg.runServerAddrFlag, router)
-		if err != nil && err != http.ErrServerClosed {
+		if err := srv.Run(serverCfg.runServerAddrFlag, router); err != nil {
 			log.Fatalf("Error occured starting server: %v", err)
 		}
 	}()
-	time.Sleep(1 * time.Second)
 
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
@@ -66,13 +63,8 @@ func main() {
 		log.Printf("Failed to save metrics on shutdown: %v", err)
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-
-	if err := srv.Shutdown(ctx); err != nil {
+	if err := srv.Shutdown(context.Background()); err != nil {
 		log.Fatalf("Error occured on server shutting down: %s", err.Error())
-	} else {
-		log.Println("Server shutdown completed.")
 	}
 }
 
