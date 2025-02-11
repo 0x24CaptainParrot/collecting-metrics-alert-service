@@ -12,6 +12,9 @@ import (
 	"github.com/go-chi/chi/v5"
 )
 
+var StoreInterval int
+var FileStoragePath string
+
 func (h *Handler) UpdateMetricHandler(w http.ResponseWriter, r *http.Request) {
 	metricType := chi.URLParam(r, "type")
 	if storage.MetricType(metricType) != storage.Gauge && storage.MetricType(metricType) != storage.Counter {
@@ -56,6 +59,12 @@ func (h *Handler) UpdateMetricHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "invalid metric type", http.StatusNotFound)
 		log.Printf("Invalid metric type: %s", metricType)
 		return
+	}
+
+	if StoreInterval == 0 {
+		if err := h.services.Storage.SaveMetricsToFile(FileStoragePath); err != nil {
+			log.Printf("Failed to save metrics to file: %v", err)
+		}
 	}
 
 	w.Header().Set("Content-Type", "text/plain")
@@ -133,6 +142,12 @@ func (h *Handler) UpdateMetricJSONHandler(w http.ResponseWriter, r *http.Request
 	default:
 		http.Error(w, "invalid metric type", http.StatusBadRequest)
 		return
+	}
+
+	if StoreInterval == 0 {
+		if err := h.services.Storage.SaveMetricsToFile(FileStoragePath); err != nil {
+			log.Printf("Failed to save metrics to file: %v", err)
+		}
 	}
 
 	w.Header().Set("Content-Type", "application/json")
