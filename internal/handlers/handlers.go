@@ -114,6 +114,11 @@ func (h *Handler) UpdateMetricJSONHandler(w http.ResponseWriter, r *http.Request
 		return
 	}
 
+	if r.ContentLength == 0 {
+		http.Error(w, "empty request body", http.StatusBadRequest)
+		return
+	}
+
 	var metric models.Metrics
 	if err := json.NewDecoder(r.Body).Decode(&metric); err != nil {
 		http.Error(w, "invalid data was given", http.StatusBadRequest)
@@ -158,6 +163,11 @@ func (h *Handler) UpdateMetricJSONHandler(w http.ResponseWriter, r *http.Request
 func (h *Handler) GetMetricJSONHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Header.Get("Content-Type") != "application/json" {
 		http.Error(w, "invalid media type was given", http.StatusUnsupportedMediaType)
+		return
+	}
+
+	if r.ContentLength == 0 {
+		http.Error(w, "empty request body", http.StatusBadRequest)
 		return
 	}
 

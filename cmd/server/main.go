@@ -52,6 +52,7 @@ func main() {
 			log.Fatalf("Error occured starting server: %v", err)
 		}
 	}()
+	time.Sleep(1 * time.Second)
 
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
