@@ -38,9 +38,9 @@ func NewRouter(service *service.Service) http.Handler {
 	r.Use(middlewares.GzipMiddleware)
 
 	h := NewHandler(service)
-	// r.Post("/update/", h.UpdateMetricJSONHandler)
+	r.Post("/update/", h.UpdateMetricJSONHandler)
 	r.Post("/update", h.UpdateMetricJSONHandler)
-	// r.Post("/value/", h.GetMetricJSONHandler)
+	r.Post("/value/", h.GetMetricJSONHandler)
 	r.Post("/value", h.GetMetricJSONHandler)
 	r.Post("/update/{type}/{name}/{value}", h.UpdateMetricHandler)
 	r.Get("/value/{type}/{name}", h.GetMetricValueHandler)
