@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"log"
+	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
@@ -49,7 +50,9 @@ func main() {
 	log.Printf("starting server on %s", serverCfg.runServerAddrFlag)
 	go func() {
 		if err := srv.Run(serverCfg.runServerAddrFlag, router); err != nil {
-			log.Fatalf("Error occured starting server: %v", err)
+			if err != http.ErrServerClosed {
+				log.Fatalf("Error occured starting server: %v", err)
+			}
 		}
 	}()
 	time.Sleep(1 * time.Second)

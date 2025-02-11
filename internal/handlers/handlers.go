@@ -109,13 +109,13 @@ func (h *Handler) GetAllMetricsStatic(w http.ResponseWriter, r *http.Request) {
 
 // json metric handlers/methods
 func (h *Handler) UpdateMetricJSONHandler(w http.ResponseWriter, r *http.Request) {
-	if r.Header.Get("Content-Type") != "application/json" {
-		http.Error(w, "invalid media type was given", http.StatusUnsupportedMediaType)
+	if r.ContentLength == 0 {
+		http.Error(w, "empty request body", http.StatusBadRequest)
 		return
 	}
 
-	if r.ContentLength == 0 {
-		http.Error(w, "empty request body", http.StatusBadRequest)
+	if r.Header.Get("Content-Type") != "application/json" {
+		http.Error(w, "invalid media type was given", http.StatusUnsupportedMediaType)
 		return
 	}
 
@@ -161,13 +161,13 @@ func (h *Handler) UpdateMetricJSONHandler(w http.ResponseWriter, r *http.Request
 }
 
 func (h *Handler) GetMetricJSONHandler(w http.ResponseWriter, r *http.Request) {
-	if r.Header.Get("Content-Type") != "application/json" {
-		http.Error(w, "invalid media type was given", http.StatusUnsupportedMediaType)
+	if r.ContentLength == 0 {
+		http.Error(w, "empty request body", http.StatusBadRequest)
 		return
 	}
 
-	if r.ContentLength == 0 {
-		http.Error(w, "empty request body", http.StatusBadRequest)
+	if r.Header.Get("Content-Type") != "application/json" {
+		http.Error(w, "invalid media type was given", http.StatusUnsupportedMediaType)
 		return
 	}
 
