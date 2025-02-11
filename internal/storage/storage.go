@@ -119,7 +119,7 @@ func (ms *MemStorage) SaveMetricsToFile(filePath string) error {
 
 	data, err := json.MarshalIndent(metrics, "", "   ")
 	if err != nil {
-		return nil
+		return err
 	}
 
 	return os.WriteFile(filePath, data, 0644)
@@ -134,7 +134,7 @@ func (ms *MemStorage) LoadMetricsFromFile(filePath string) error {
 		if os.IsNotExist(err) {
 			return nil
 		}
-		return nil
+		return err
 	}
 
 	var metrics []models.Metrics
