@@ -27,6 +27,9 @@ func main() {
 	restoreData := serverCfg.restore
 	interval := int(serverCfg.storeInterval)
 
+	handlers.StoreInterval = interval
+	handlers.FileStoragePath = filePath
+
 	if restoreData {
 		if err := storage.LoadMetricsFromFile(filePath); err != nil {
 			log.Printf("error loading metrics from from file: %v", err)
