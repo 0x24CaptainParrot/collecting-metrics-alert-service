@@ -25,3 +25,11 @@ func (s *StorageService) GetMetric(name string, metricType storage.MetricType) (
 func (s *StorageService) GetMetrics() map[string]interface{} {
 	return s.st.GetMetrics()
 }
+
+func (s *StorageService) SaveMetricsToFile(filePath string) error {
+	return s.st.SaveMetricsToFile(filePath)
+}
+
+func (s *StorageService) LoadMetricsFromFile(filePath string) error {
+	return s.st.LoadMetricsFromFile(filePath)
+}

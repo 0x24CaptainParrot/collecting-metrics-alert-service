@@ -1,9 +1,13 @@
 package storage
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
+	"os"
 	"sync"
+
+	"github.com/0x24CaptainParrot/collecting-metrics-alert-service.git/internal/models"
 )
 
 type MetricType string
@@ -87,4 +91,63 @@ func (ms *MemStorage) GetMetrics() map[string]interface{} {
 	}
 
 	return metrics
+}
+
+// implementation of saving and loading metrics from storage
+func (ms *MemStorage) SaveMetricsToFile(filePath string) error {
+	ms.mu.RLock()
+	defer ms.mu.RUnlock()
+
+	metrics := make([]models.Metrics, 0)
+	for name, value := range ms.gauges {
+		v := value
+		metrics = append(metrics, models.Metrics{
+			ID:    name,
+			MType: "gauge",
+			Value: &v,
+		})
+	}
+
+	for name, value := range ms.counters {
+		v := value
+		metrics = append(metrics, models.Metrics{
+			ID:    name,
+			MType: "counter",
+			Delta: &v,
+		})
+	}
+
+	data, err := json.MarshalIndent(metrics, "", "   ")
+	if err != nil {
+		return nil
+	}
+
+	return os.WriteFile(filePath, data, 0644)
+}
+
+func (ms *MemStorage) LoadMetricsFromFile(filePath string) error {
+	ms.mu.Lock()
+	defer ms.mu.Unlock()
+
+	data, err := os.ReadFile(filePath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil
+		}
+		return nil
+	}
+
+	var metrics []models.Metrics
+	if err := json.Unmarshal(data, &metrics); err != nil {
+		return err
+	}
+
+	for _, m := range metrics {
+		if m.MType == "guage" && m.Value != nil {
+			ms.gauges[m.ID] = *m.Value
+		} else if m.MType == "counter" && m.Delta != nil {
+			ms.counters[m.ID] = *m.Delta
+		}
+	}
+	return nil
 }

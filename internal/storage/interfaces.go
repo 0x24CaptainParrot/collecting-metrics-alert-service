@@ -5,4 +5,6 @@ type MetricStorage interface {
 	UpdateCounter(name string, value int64) error
 	GetMetric(name string, metricType MetricType) (interface{}, error)
 	GetMetrics() map[string]interface{}
+	SaveMetricsToFile(filePath string) error
+	LoadMetricsFromFile(filePath string) error
 }
