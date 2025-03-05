@@ -1,6 +1,8 @@
 package handlers
 
 import (
+	"net/http"
+
 	"github.com/0x24CaptainParrot/collecting-metrics-alert-service.git/internal/logger"
 	"github.com/0x24CaptainParrot/collecting-metrics-alert-service.git/internal/middlewares"
 	"github.com/0x24CaptainParrot/collecting-metrics-alert-service.git/internal/service"
@@ -16,7 +18,7 @@ func NewHandler(service *service.Service) *Handler {
 	return &Handler{services: service}
 }
 
-func (h *Handler) InitHandlerRoutes() *chi.Mux {
+func (h *Handler) InitHandlerRoutes() http.Handler {
 	r := chi.NewRouter()
 	r.Use(middleware.Logger)
 	r.Use(logger.LoggingHttpMiddleware(logger.Log))
