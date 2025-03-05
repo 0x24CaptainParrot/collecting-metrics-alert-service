@@ -23,6 +23,7 @@ type serverConfig struct {
 	storeInterval     uint   `env:"STORE_INTERVAL"`
 	fileStoragePath   string `env:"FILE_STORAGE_PATH"`
 	restore           bool   `env:"RESTORE"`
+	dbDsn             string `env:"DATABASE_DSN"`
 }
 
 var serverCfg serverConfig
@@ -33,6 +34,7 @@ func parseServerFlags() {
 	flag.UintVar(&serverCfg.storeInterval, "i", storeIntervalDefault, "interval in seconds for saving metrics")
 	flag.StringVar(&serverCfg.fileStoragePath, "f", fileStoragePathDefault, "path to the file for saving metrics")
 	flag.BoolVar(&serverCfg.restore, "r", restoreDefault, "whether or not to download metrics at server startup")
+	flag.StringVar(&serverCfg.dbDsn, "d", "", "data source name")
 	flag.Parse()
 
 	if len(flag.Args()) > 0 {
@@ -74,6 +76,12 @@ func parseServerFlags() {
 	if envRestore != "" {
 		// serverCfg.restore = envRestore
 		log.Printf("RESTORE was changed via env variable. (%s)", envRestore)
+	}
+
+	envDatabaseDsn := os.Getenv("DATABASE_DSN")
+	if envDatabaseDsn != "" {
+		serverCfg.dbDsn = envDatabaseDsn
+		log.Printf("DATABASE_DSN was changed via env variable. (%s)", envDatabaseDsn)
 	}
 
 	log.Printf("Server will run on %s", serverCfg.runServerAddrFlag)

@@ -1,4 +1,4 @@
-package service
+package repository
 
 import (
 	"database/sql"
@@ -15,16 +15,12 @@ type StorageDB interface {
 	LoadMetricsFromFile(filePath string) error
 }
 
-type Service struct {
-	Storage storage.MetricStorage
-	DB      *sql.DB
-	// StorageDB
+type Repository struct {
+	StorageDB
 }
 
-func NewService(st *storage.MemStorage, db *sql.DB) *Service {
-	return &Service{
-		Storage: NewStorageService(st),
-		DB:      db,
-		// StorageDB: NewStorageDBService(repo),
+func NewRepository(db *sql.DB) *Repository {
+	return &Repository{
+		StorageDB: NewStoragePostgres(db),
 	}
 }

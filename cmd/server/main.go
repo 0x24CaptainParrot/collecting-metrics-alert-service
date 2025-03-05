@@ -10,18 +10,25 @@ import (
 
 	"github.com/0x24CaptainParrot/collecting-metrics-alert-service.git/internal/handlers"
 	"github.com/0x24CaptainParrot/collecting-metrics-alert-service.git/internal/logger"
+	"github.com/0x24CaptainParrot/collecting-metrics-alert-service.git/internal/repository"
 	"github.com/0x24CaptainParrot/collecting-metrics-alert-service.git/internal/service"
 	"github.com/0x24CaptainParrot/collecting-metrics-alert-service.git/internal/storage"
 )
 
 func main() {
+	parseServerFlags()
+
+	db, err := repository.NewPostgresDB(serverCfg.dbDsn)
+	if err != nil {
+		log.Fatalf("failed to initialize db: %s", err.Error())
+	}
+	defer db.Close()
+
 	storage := storage.NewMemStorage()
-	services := service.NewService(storage)
-	router := handlers.NewRouter(services)
+	services := service.NewService(storage, db)
+	handler := handlers.NewHandler(services)
 
 	srv := &handlers.Server{}
-
-	parseServerFlags()
 
 	filePath := serverCfg.fileStoragePath
 	restoreData := serverCfg.restore
@@ -48,7 +55,7 @@ func main() {
 
 	log.Printf("starting server on %s", serverCfg.runServerAddrFlag)
 	go func() {
-		if err := srv.Run(serverCfg.runServerAddrFlag, router); err != nil {
+		if err := srv.Run(serverCfg.runServerAddrFlag, handler.InitHandlerRoutes()); err != nil {
 			log.Fatalf("Error occured starting server: %v", err)
 		}
 	}()

@@ -207,3 +207,12 @@ func (h *Handler) GetMetricJSONHandler(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(resultMetric)
 }
+
+func (h *Handler) PingDatabase(w http.ResponseWriter, r *http.Request) {
+	if err := h.services.DB.Ping(); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		log.Printf("Database ping error: %v", err)
+		return
+	}
+	w.WriteHeader(http.StatusOK)
+}

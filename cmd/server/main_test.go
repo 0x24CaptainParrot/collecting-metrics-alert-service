@@ -65,14 +65,15 @@ func TestUpdateMetricHandler(t *testing.T) {
 	}
 
 	storage := storage.NewMemStorage()
-	services := service.NewService(storage)
-	router := handlers.NewRouter(services)
+	services := service.NewService(storage, nil)
+	// router := handlers.NewRouter(services)
+	handler := handlers.NewHandler(services)
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			req := httptest.NewRequest(http.MethodPost, tc.url, nil)
 			w := httptest.NewRecorder()
-			router.ServeHTTP(w, req)
+			handler.InitHandlerRoutes().ServeHTTP(w, req)
 
 			res := w.Result()
 			assert.Equal(t, tc.want.code, res.StatusCode)
