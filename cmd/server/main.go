@@ -18,11 +18,14 @@ import (
 func main() {
 	parseServerFlags()
 
-	db, err := repository.NewPostgresDB(serverCfg.dbDsn)
+	db, err := repository.NewPostgresDB()
 	if err != nil {
 		log.Fatalf("failed to initialize db: %s", err.Error())
 	}
 	defer db.Close()
+	if db == nil {
+		log.Println("Database is disabled. Running without db integration.")
+	}
 
 	storage := storage.NewMemStorage()
 	services := service.NewService(storage, db)

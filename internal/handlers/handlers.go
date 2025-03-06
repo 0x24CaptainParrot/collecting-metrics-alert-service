@@ -209,6 +209,12 @@ func (h *Handler) GetMetricJSONHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) PingDatabase(w http.ResponseWriter, r *http.Request) {
+	if h.services.DB == nil {
+		http.Error(w, "database connection is disabled", http.StatusServiceUnavailable)
+		log.Println("Ping request received, but database is not connected.")
+		return
+	}
+
 	if err := h.services.DB.Ping(); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		log.Printf("Database ping error: %v", err)

@@ -4,11 +4,18 @@ import (
 	"database/sql"
 	"fmt"
 	"log"
+	"os"
 
 	_ "github.com/jackc/pgx/v5/stdlib"
 )
 
-func NewPostgresDB(dsn string) (*sql.DB, error) {
+func NewPostgresDB() (*sql.DB, error) {
+	dsn := os.Getenv("DATABASE_DSN")
+	if dsn == "" {
+		log.Println("warning: DATABASE_DSN is not set. Server will start without db connection.")
+		return nil, nil
+	}
+
 	db, err := sql.Open("pgx", dsn)
 	if err != nil {
 		return nil, fmt.Errorf("failed to open database: %w", err)
