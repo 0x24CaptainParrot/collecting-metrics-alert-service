@@ -92,3 +92,31 @@ func TestUpdateMetricHandler(t *testing.T) {
 		})
 	}
 }
+
+// func TestMetricStorage(t *testing.T) {
+// 	ctrl := gomock.NewController(t)
+// 	defer ctrl.Finish()
+
+// 	ms := mocks.NewMockMetricStorage(ctrl)
+// 	service := service.NewService(ms, nil)
+
+// 	type want struct {
+// 		code int
+// 	}
+
+// 	type testCase struct {
+// 		name       string
+// 		url        string
+// 		metricType string
+// 		expected   interface{}
+// 		want       want
+// 	}
+
+// 	testCases := []testCase{}
+
+// 	for _, tc := range testCases {
+// 		t.Run(tc.name, func(t *testing.T) {
+// 			req := httptest.NewRequest(http.MethodPost, tc.url, nil)
+// 		})
+// 	}
+// }

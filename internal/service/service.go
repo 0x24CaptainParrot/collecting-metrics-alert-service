@@ -6,6 +6,15 @@ import (
 	"github.com/0x24CaptainParrot/collecting-metrics-alert-service.git/internal/storage"
 )
 
+type MetricStorage interface {
+	UpdateGauge(name string, value float64) error
+	UpdateCounter(name string, value int64) error
+	GetMetric(name string, metricType storage.MetricType) (interface{}, error)
+	GetMetrics() map[string]interface{}
+	SaveMetricsToFile(filePath string) error
+	LoadMetricsFromFile(filePath string) error
+}
+
 type StorageDB interface {
 	UpdateGauge(name string, value float64) error
 	UpdateCounter(name string, value int64) error
@@ -16,7 +25,7 @@ type StorageDB interface {
 }
 
 type Service struct {
-	Storage storage.MetricStorage
+	Storage MetricStorage
 	DB      *sql.DB
 	// StorageDB
 }
