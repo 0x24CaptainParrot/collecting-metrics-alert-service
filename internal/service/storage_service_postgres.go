@@ -1,6 +1,8 @@
 package service
 
 import (
+	"database/sql"
+
 	"github.com/0x24CaptainParrot/collecting-metrics-alert-service.git/internal/repository"
 	"github.com/0x24CaptainParrot/collecting-metrics-alert-service.git/internal/storage"
 )
@@ -27,6 +29,14 @@ func (sDBServ *StorageDBService) GetMetric(name string, metricType storage.Metri
 
 func (sDBServ *StorageDBService) GetMetrics() map[string]interface{} {
 	return sDBServ.repo.GetMetrics()
+}
+
+func (sDBServ *StorageDBService) DB() *sql.DB {
+	return sDBServ.repo.(*repository.StoragePostgres).DB()
+}
+
+func (sDBServ *StorageDBService) Ping() error {
+	return sDBServ.repo.(*repository.StoragePostgres).Ping()
 }
 
 func (sDBServ *StorageDBService) SaveMetricsToFile(filePath string) error {

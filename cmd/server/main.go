@@ -28,7 +28,8 @@ func main() {
 	}
 
 	storage := storage.NewMemStorage()
-	services := service.NewService(storage, db)
+	repos := repository.NewRepository(db)
+	services := service.NewService(repos, storage)
 	handler := handlers.NewHandler(services)
 
 	srv := &handlers.Server{}

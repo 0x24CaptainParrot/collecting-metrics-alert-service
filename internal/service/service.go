@@ -1,8 +1,7 @@
 package service
 
 import (
-	"database/sql"
-
+	"github.com/0x24CaptainParrot/collecting-metrics-alert-service.git/internal/repository"
 	"github.com/0x24CaptainParrot/collecting-metrics-alert-service.git/internal/storage"
 )
 
@@ -25,15 +24,13 @@ type StorageDB interface {
 }
 
 type Service struct {
-	Storage MetricStorage
-	DB      *sql.DB
-	// StorageDB
+	MetricStorage
+	StorageDB
 }
 
-func NewService(st *storage.MemStorage, db *sql.DB) *Service {
+func NewService(repos *repository.Repository, st *storage.MemStorage) *Service {
 	return &Service{
-		Storage: NewStorageService(st),
-		DB:      db,
-		// StorageDB: NewStorageDBService(repo),
+		MetricStorage: NewStorageService(st),
+		StorageDB:     NewStorageDBService(repos.StorageDB),
 	}
 }
