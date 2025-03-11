@@ -21,6 +21,7 @@ func (h *Handler) UpdateMetricHandler(w http.ResponseWriter, r *http.Request) {
 	if storage.MetricType(metricType) != storage.Gauge && storage.MetricType(metricType) != storage.Counter {
 		http.Error(w, "unknown type was given", http.StatusBadRequest)
 		log.Printf("Error parsing url parameter")
+		return
 	}
 	metricName := chi.URLParam(r, "name")
 	metricValue := chi.URLParam(r, "value")
@@ -210,13 +211,20 @@ func (h *Handler) GetMetricJSONHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) PingDatabase(w http.ResponseWriter, r *http.Request) {
-	if h.services.StorageDB.(*service.StorageDBService).DB() == nil {
+	if h.services.StorageDB == nil {
+		http.Error(w, "database is not configured", http.StatusServiceUnavailable)
+		log.Println("Ping request received, but databse is not configured.")
+		return
+	}
+
+	dbStorage, ok := h.services.StorageDB.(*service.StorageDBService)
+	if !ok || dbStorage.DB() == nil {
 		http.Error(w, "database connection is disabled", http.StatusServiceUnavailable)
 		log.Println("Ping request received, but database is not connected.")
 		return
 	}
 
-	if err := h.services.StorageDB.(*service.StorageDBService).Ping(); err != nil {
+	if err := dbStorage.Ping(); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		log.Printf("Database ping error: %v", err)
 		return

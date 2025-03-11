@@ -13,6 +13,11 @@ type StoragePostgres struct {
 }
 
 func NewStoragePostgres(db *sql.DB) *StoragePostgres {
+	if db == nil {
+		log.Println("Warning: database is not configured. Using in-memory storage.")
+		return nil
+	}
+
 	st := &StoragePostgres{db: db}
 	if err := st.CreateTables(); err != nil {
 		log.Fatalf("Error creating tables in db.")
