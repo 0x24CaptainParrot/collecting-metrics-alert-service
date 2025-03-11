@@ -66,7 +66,6 @@ func TestUpdateMetricHandler(t *testing.T) {
 
 	storage := storage.NewMemStorage()
 	services := service.NewService(nil, storage)
-	// router := handlers.NewRouter(services)
 	handler := handlers.NewHandler(services)
 
 	for _, tc := range tests {

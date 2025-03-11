@@ -21,7 +21,6 @@ func (h *Handler) UpdateMetricHandler(w http.ResponseWriter, r *http.Request) {
 	if storage.MetricType(metricType) != storage.Gauge && storage.MetricType(metricType) != storage.Counter {
 		http.Error(w, "unknown type was given", http.StatusBadRequest)
 		log.Printf("Error parsing url parameter")
-		return
 	}
 	metricName := chi.URLParam(r, "name")
 	metricValue := chi.URLParam(r, "value")

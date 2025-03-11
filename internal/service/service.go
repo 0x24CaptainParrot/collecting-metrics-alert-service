@@ -24,8 +24,8 @@ type StorageDB interface {
 }
 
 type Service struct {
-	MetricStorage
-	StorageDB
+	MetricStorage MetricStorage
+	StorageDB     StorageDB
 }
 
 func NewService(repos *repository.Repository, st *storage.MemStorage) *Service {
