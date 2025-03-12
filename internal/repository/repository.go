@@ -2,6 +2,7 @@ package repository
 
 import (
 	"database/sql"
+	"log"
 
 	"github.com/0x24CaptainParrot/collecting-metrics-alert-service.git/internal/storage"
 )
@@ -20,6 +21,10 @@ type Repository struct {
 }
 
 func NewRepository(db *sql.DB) *Repository {
+	if db == nil {
+		log.Println("[repository] Database is not set, using memory storage instead.")
+		return &Repository{StorageDB: nil}
+	}
 	return &Repository{
 		StorageDB: NewStoragePostgres(db),
 	}
