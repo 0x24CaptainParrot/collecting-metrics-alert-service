@@ -209,6 +209,55 @@ func (h *Handler) GetMetricJSONHandler(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(resultMetric)
 }
 
+func (h *Handler) UpdateBatchMetricsJSONHandler(w http.ResponseWriter, r *http.Request) {
+	if r.ContentLength == 0 {
+		http.Error(w, "empty request body", http.StatusBadRequest)
+		return
+	}
+
+	if r.Header.Get("Content-Type") != "application/json" {
+		http.Error(w, "accepts json content-type only", http.StatusUnsupportedMediaType)
+		return
+	}
+
+	var metrics []models.Metrics
+	if err := json.NewDecoder(r.Body).Decode(&metrics); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	for _, metric := range metrics {
+		switch metric.MType {
+		case "gauge":
+			if metric.Value == nil {
+				http.Error(w, "missing value for gauge type", http.StatusBadRequest)
+				return
+			}
+			if err := h.services.MetricStorageDB.UpdateGauge(metric.ID, *metric.Value); err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+
+		case "counter":
+			if metric.Delta == nil {
+				http.Error(w, "missing value for counter type", http.StatusBadRequest)
+				return
+			}
+			if err := h.services.MetricStorageDB.UpdateCounter(metric.ID, *metric.Delta); err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+		default:
+			http.Error(w, "invalid metric type", http.StatusBadRequest)
+			return
+		}
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(metrics)
+}
+
 func (h *Handler) PingDatabase(w http.ResponseWriter, r *http.Request) {
 	if h.services.MetricStorageDB == nil {
 		http.Error(w, "database is not configured", http.StatusServiceUnavailable)

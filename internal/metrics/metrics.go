@@ -196,6 +196,46 @@ func (a *Agent) SendGzipJSONMetrics(metrics map[string]interface{}) {
 	}
 }
 
+func (a *Agent) SendBatchJSONMetrics(metrics map[string]interface{}) {
+	var batchMetrics []models.Metrics
+
+	for metricName, metricVal := range metrics {
+		metric := models.Metrics{
+			ID:    metricName,
+			MType: "",
+		}
+
+		switch v := metricVal.(type) {
+		case float64:
+			metric.MType = "gauge"
+			metric.Value = &v
+		case int64:
+			metric.MType = "counter"
+			metric.Delta = &v
+		default:
+			continue
+		}
+
+		batchMetrics = append(batchMetrics, metric)
+	}
+
+	url := fmt.Sprintf("%s/updates/", a.serverAddress)
+	resp, err := a.client.R().
+		SetHeader("Content-Type", "application/json").
+		SetBody(batchMetrics).
+		Post(url)
+
+	if err != nil {
+		fmt.Println("error sending metric", err)
+	}
+
+	if resp.IsSuccess() {
+		fmt.Printf("Batch of JSON metrics has been successfully sent.\n")
+	} else {
+		fmt.Printf("Failed to send batch of JSON metrics. Code: %s.", resp.Status())
+	}
+}
+
 func (a *Agent) Start() {
 	tickerPoll := time.NewTicker(a.pollInterval)
 	tickerReport := time.NewTicker(a.reportInterval)

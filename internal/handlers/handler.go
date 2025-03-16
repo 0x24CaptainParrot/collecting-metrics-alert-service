@@ -25,6 +25,7 @@ func (h *Handler) InitHandlerRoutes() http.Handler {
 	r.Use(middlewares.GzipMiddleware)
 
 	r.Get("/ping", h.PingDatabase)
+	r.Post("/updates/", h.UpdateBatchMetricsJSONHandler)
 	r.Post("/update/", h.UpdateMetricJSONHandler)
 	r.Post("/value/", h.GetMetricJSONHandler)
 	r.Post("/update/{type}/{name}/{value}", h.UpdateMetricHandler)
