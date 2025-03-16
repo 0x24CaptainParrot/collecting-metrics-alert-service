@@ -254,6 +254,7 @@ func (a *Agent) Start() {
 			a.SendMetrics(metrics)
 			a.SendJSONMetrics(metrics)
 			a.SendGzipJSONMetrics(metrics)
+			a.SendBatchJSONMetrics(metrics)
 			fmt.Println("Metrics have been sent.")
 		}
 	}

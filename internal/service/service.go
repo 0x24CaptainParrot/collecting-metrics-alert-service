@@ -28,18 +28,6 @@ type MetricStorageDB interface {
 	StorageDB
 }
 
-// type Service struct {
-// 	MetricStorage MetricStorage
-// 	StorageDB     StorageDB
-// }
-
-// func NewService(repos *repository.Repository, st *storage.MemStorage) *Service {
-// 	return &Service{
-// 		MetricStorage: NewStorageService(st),
-// 		StorageDB:     NewStorageDBService(repos.StorageDB),
-// 	}
-// }
-
 type Service struct {
 	MetricStorageDB MetricStorageDB
 }
@@ -53,10 +41,3 @@ func NewService(repos *repository.Repository, st *storage.MemStorage) *Service {
 	}
 	return service
 }
-
-// func (s *Service) GetStorage() MetricStorageDB {
-// 	if s.StorageDB != nil {
-// 		return s.StorageDB
-// 	}
-// 	return s.MetricStorage
-// }
