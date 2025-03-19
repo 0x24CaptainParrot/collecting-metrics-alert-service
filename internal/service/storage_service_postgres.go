@@ -27,7 +27,7 @@ func (sDBServ *StorageDBService) GetMetric(name string, metricType storage.Metri
 	return sDBServ.repo.GetMetric(name, metricType)
 }
 
-func (sDBServ *StorageDBService) GetMetrics() map[string]interface{} {
+func (sDBServ *StorageDBService) GetMetrics() (map[string]interface{}, error) {
 	return sDBServ.repo.GetMetrics()
 }
 

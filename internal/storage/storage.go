@@ -77,7 +77,7 @@ func (ms *MemStorage) GetMetric(name string, metricType MetricType) (interface{}
 	}
 }
 
-func (ms *MemStorage) GetMetrics() map[string]interface{} {
+func (ms *MemStorage) GetMetrics() (map[string]interface{}, error) {
 	ms.mu.RLock()
 	defer ms.mu.RUnlock()
 
@@ -90,7 +90,7 @@ func (ms *MemStorage) GetMetrics() map[string]interface{} {
 		metrics[k] = v
 	}
 
-	return metrics
+	return metrics, nil
 }
 
 // implementation of saving and loading metrics from storage

@@ -99,7 +99,11 @@ func (h *Handler) GetMetricValueHandler(w http.ResponseWriter, r *http.Request) 
 func (h *Handler) GetAllMetricsStatic(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html")
 
-	metrics := h.services.MetricStorageDB.GetMetrics()
+	metrics, err := h.services.MetricStorageDB.GetMetrics()
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
 	fmt.Fprintln(w, "<html><body><h1>Metrics:</h1><ul>")
 	for name, val := range metrics {
 		fmt.Fprintf(w, "<li>%s: %v</li>", name, val)

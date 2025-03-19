@@ -22,7 +22,7 @@ func (s *StorageService) GetMetric(name string, metricType storage.MetricType) (
 	return s.st.GetMetric(name, metricType)
 }
 
-func (s *StorageService) GetMetrics() map[string]interface{} {
+func (s *StorageService) GetMetrics() (map[string]interface{}, error) {
 	return s.st.GetMetrics()
 }
 

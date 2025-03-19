@@ -79,7 +79,7 @@ func TestUpdateMetricHandler(t *testing.T) {
 
 			// Проверка правильности сохранения метрики в хранилище
 			if tc.want.code == http.StatusOK {
-				metrics := storage.GetMetrics()
+				metrics, _ := storage.GetMetrics()
 
 				switch tc.metricType {
 				case "gauge":

@@ -4,8 +4,10 @@ import (
 	"bytes"
 	"compress/gzip"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"math/rand/v2"
+	"net"
 	"runtime"
 	"strconv"
 	"time"
@@ -251,11 +253,40 @@ func (a *Agent) Start() {
 			}
 			fmt.Println("Metrics have been collected.")
 		case <-tickerReport.C:
-			a.SendMetrics(metrics)
-			a.SendJSONMetrics(metrics)
-			a.SendGzipJSONMetrics(metrics)
-			a.SendBatchJSONMetrics(metrics)
+			// a.SendMetrics(metrics)
+			// a.SendJSONMetrics(metrics)
+			// a.SendGzipJSONMetrics(metrics)
+			// a.SendBatchJSONMetrics(metrics)
+			//
+			a.SendMetricsRetry(metrics)
+			a.SendJSONMetricsRetry(metrics)
+			a.SendGzipJSONMetricsRetry(metrics)
+			a.SendBatchJSONMetricsRetry(metrics)
 			fmt.Println("Metrics have been sent.")
 		}
 	}
+}
+
+func DoRequestWithRetry(fn func() error) error {
+	var backoffs = []time.Duration{1 * time.Second, 3 * time.Second, 5 * time.Second}
+
+	var lastErr error
+	for i := 0; i < len(backoffs)+1; i++ {
+		if err := fn(); err != nil {
+			if IsRetriableNetworkErr(err) && i < len(backoffs) {
+				lastErr = err
+				time.Sleep(backoffs[i])
+				continue
+			}
+			return err
+		}
+		return nil
+	}
+
+	return lastErr
+}
+
+func IsRetriableNetworkErr(err error) bool {
+	var netErr net.Error
+	return errors.As(err, &netErr)
 }
