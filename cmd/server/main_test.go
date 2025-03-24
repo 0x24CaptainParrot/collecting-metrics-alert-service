@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -65,6 +66,7 @@ func TestUpdateMetricHandler(t *testing.T) {
 	}
 
 	storage := storage.NewMemStorage()
+	// services := service.NewService(nil, storage)
 	services := service.NewService(nil, storage)
 	handler := handlers.NewHandler(services)
 
@@ -79,7 +81,7 @@ func TestUpdateMetricHandler(t *testing.T) {
 
 			// Проверка правильности сохранения метрики в хранилище
 			if tc.want.code == http.StatusOK {
-				metrics, _ := storage.GetMetrics()
+				metrics, _ := storage.GetMetrics(context.Background())
 
 				switch tc.metricType {
 				case "gauge":
@@ -91,31 +93,3 @@ func TestUpdateMetricHandler(t *testing.T) {
 		})
 	}
 }
-
-// func TestMetricStorage(t *testing.T) {
-// 	ctrl := gomock.NewController(t)
-// 	defer ctrl.Finish()
-
-// 	ms := mocks.NewMockMetricStorage(ctrl)
-// 	service := service.NewService(ms, nil)
-
-// 	type want struct {
-// 		code int
-// 	}
-
-// 	type testCase struct {
-// 		name       string
-// 		url        string
-// 		metricType string
-// 		expected   interface{}
-// 		want       want
-// 	}
-
-// 	testCases := []testCase{}
-
-// 	for _, tc := range testCases {
-// 		t.Run(tc.name, func(t *testing.T) {
-// 			req := httptest.NewRequest(http.MethodPost, tc.url, nil)
-// 		})
-// 	}
-// }

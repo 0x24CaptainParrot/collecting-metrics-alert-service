@@ -1,6 +1,7 @@
 package repository
 
 import (
+	"context"
 	"database/sql"
 	"log"
 
@@ -8,12 +9,10 @@ import (
 )
 
 type StorageDB interface {
-	UpdateGauge(name string, value float64) error
-	UpdateCounter(name string, value int64) error
-	GetMetric(name string, metricType storage.MetricType) (interface{}, error)
-	GetMetrics() (map[string]interface{}, error)
-	SaveMetricsToFile(filePath string) error
-	LoadMetricsFromFile(filePath string) error
+	UpdateMetricValue(ctx context.Context, name string, value interface{}) error
+	GetMetric(ctx context.Context, name string, metricType storage.MetricType) (interface{}, error)
+	GetMetrics(ctx context.Context) (map[string]interface{}, error)
+	SaveLoadMetrics(filePath string, operation string) error
 }
 
 type Repository struct {

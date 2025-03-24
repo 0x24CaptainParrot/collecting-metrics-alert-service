@@ -1,8 +1,8 @@
 package storage
 
 import (
+	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"os"
 	"sync"
@@ -30,32 +30,26 @@ func NewMemStorage() *MemStorage {
 	}
 }
 
-func (ms *MemStorage) UpdateGauge(name string, value float64) error {
-	if value < 0 {
-		return errors.New("given gauge value cannot be negative")
-	}
-
+func (ms *MemStorage) UpdateMetricValue(ctx context.Context, name string, value interface{}) error {
 	ms.mu.Lock()
 	defer ms.mu.Unlock()
-	ms.gauges[name] = value
-	return nil
+
+	switch v := value.(type) {
+	case float64:
+		ms.gauges[name] = v
+		return nil
+	case int64:
+		if _, exists := ms.counters[name]; !exists {
+			ms.counters[name] = 0
+		}
+		ms.counters[name] += v
+		return nil
+	default:
+		return fmt.Errorf("invalid metric type was given: %v", v)
+	}
 }
 
-func (ms *MemStorage) UpdateCounter(name string, value int64) error {
-	if value < 0 {
-		return errors.New("given counter value cannot be negative")
-	}
-
-	ms.mu.Lock()
-	defer ms.mu.Unlock()
-	if _, exists := ms.counters[name]; !exists {
-		ms.counters[name] = 0
-	}
-	ms.counters[name] += value
-	return nil
-}
-
-func (ms *MemStorage) GetMetric(name string, metricType MetricType) (interface{}, error) {
+func (ms *MemStorage) GetMetric(ctx context.Context, name string, metricType MetricType) (interface{}, error) {
 	ms.mu.RLock()
 	defer ms.mu.RUnlock()
 
@@ -77,7 +71,7 @@ func (ms *MemStorage) GetMetric(name string, metricType MetricType) (interface{}
 	}
 }
 
-func (ms *MemStorage) GetMetrics() (map[string]interface{}, error) {
+func (ms *MemStorage) GetMetrics(ctx context.Context) (map[string]interface{}, error) {
 	ms.mu.RLock()
 	defer ms.mu.RUnlock()
 
@@ -93,61 +87,58 @@ func (ms *MemStorage) GetMetrics() (map[string]interface{}, error) {
 	return metrics, nil
 }
 
-// implementation of saving and loading metrics from storage
-func (ms *MemStorage) SaveMetricsToFile(filePath string) error {
-	ms.mu.RLock()
-	defer ms.mu.RUnlock()
-
-	metrics := make([]models.Metrics, 0)
-	for name, value := range ms.gauges {
-		v := value
-		metrics = append(metrics, models.Metrics{
-			ID:    name,
-			MType: "gauge",
-			Value: &v,
-		})
-	}
-
-	for name, value := range ms.counters {
-		v := value
-		metrics = append(metrics, models.Metrics{
-			ID:    name,
-			MType: "counter",
-			Delta: &v,
-		})
-	}
-
-	data, err := json.MarshalIndent(metrics, "", "   ")
-	if err != nil {
-		return err
-	}
-
-	return os.WriteFile(filePath, data, 0644)
-}
-
-func (ms *MemStorage) LoadMetricsFromFile(filePath string) error {
+func (ms *MemStorage) SaveLoadMetrics(filePath string, operation string) error {
 	ms.mu.Lock()
 	defer ms.mu.Unlock()
 
-	data, err := os.ReadFile(filePath)
-	if err != nil {
-		if os.IsNotExist(err) {
-			return nil
-		}
-		return err
-	}
+	switch operation {
+	case "save":
+		metrics := make([]models.Metrics, 0)
 
-	var metrics []models.Metrics
-	if err := json.Unmarshal(data, &metrics); err != nil {
-		return err
-	}
-
-	for _, m := range metrics {
-		if m.MType == "gauge" && m.Value != nil {
-			ms.gauges[m.ID] = *m.Value
-		} else if m.MType == "counter" && m.Delta != nil {
-			ms.counters[m.ID] = *m.Delta
+		for name, value := range ms.gauges {
+			metrics = append(metrics, models.Metrics{
+				ID:    name,
+				MType: "gauge",
+				Value: &value,
+			})
 		}
+		for name, value := range ms.counters {
+			metrics = append(metrics, models.Metrics{
+				ID:    name,
+				MType: "counter",
+				Delta: &value,
+			})
+		}
+
+		data, err := json.MarshalIndent(metrics, "", "   ")
+		if err != nil {
+			return err
+		}
+		return os.WriteFile(filePath, data, 0644)
+
+	case "load":
+		data, err := os.ReadFile(filePath)
+		if err != nil {
+			if os.IsNotExist(err) {
+				return nil
+			}
+			return err
+		}
+
+		var metrics []models.Metrics
+		if err := json.Unmarshal(data, &metrics); err != nil {
+			return err
+		}
+
+		for _, m := range metrics {
+			if m.MType == "gauge" && m.Value != nil {
+				ms.gauges[m.ID] = *m.Value
+			} else if m.MType == "counter" && m.Delta != nil {
+				ms.counters[m.ID] = *m.Delta
+			}
+		}
+		return nil
+	default:
+		return fmt.Errorf("invalid operation or incorrect filepath was given")
 	}
-	return nil
 }

@@ -8,6 +8,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/0x24CaptainParrot/collecting-metrics-alert-service.git/internal/config"
 	"github.com/0x24CaptainParrot/collecting-metrics-alert-service.git/internal/handlers"
 	"github.com/0x24CaptainParrot/collecting-metrics-alert-service.git/internal/logger"
 	"github.com/0x24CaptainParrot/collecting-metrics-alert-service.git/internal/repository"
@@ -16,9 +17,9 @@ import (
 )
 
 func main() {
-	parseServerFlags()
+	config.ParseServerFlags()
 
-	db, err := repository.NewPostgresDB()
+	db, err := repository.NewPostgresDB(os.Getenv("DATABASE_DSN"))
 	if err != nil {
 		log.Fatalf("failed to initialize db: %s", err.Error())
 	}
@@ -34,15 +35,15 @@ func main() {
 
 	srv := &handlers.Server{}
 
-	filePath := serverCfg.fileStoragePath
-	restoreData := serverCfg.restore
-	interval := int(serverCfg.storeInterval)
+	filePath := config.ServerCfg.FileStoragePath
+	restoreData := config.ServerCfg.Restore
+	interval := int(config.ServerCfg.StoreInterval)
 
 	handlers.StoreInterval = interval
 	handlers.FileStoragePath = filePath
 
 	if restoreData {
-		if err := storage.LoadMetricsFromFile(filePath); err != nil {
+		if err := storage.SaveLoadMetrics(filePath, "load"); err != nil {
 			log.Printf("error loading metrics from from file: %v", err)
 		} else {
 			log.Println("Metrics successfully loaded from file.")
@@ -52,14 +53,14 @@ func main() {
 	stopSaving := make(chan struct{})
 	go StartAutoSave(storage, filePath, interval, stopSaving)
 
-	if err := logger.InitializeLogger(serverCfg.logLevel); err != nil {
+	if err := logger.InitializeLogger(config.ServerCfg.LogLevel); err != nil {
 		log.Fatalf("Failed to initialize logger: %v", err)
 	}
 	defer logger.Log.Sync()
 
-	log.Printf("starting server on %s", serverCfg.runServerAddrFlag)
+	log.Printf("starting server on %s", config.ServerCfg.RunServerAddrFlag)
 	go func() {
-		if err := srv.Run(serverCfg.runServerAddrFlag, handler.InitHandlerRoutes()); err != nil {
+		if err := srv.Run(config.ServerCfg.RunServerAddrFlag, handler.InitHandlerRoutes()); err != nil {
 			log.Fatalf("Error occured starting server: %v", err)
 		}
 	}()
@@ -70,7 +71,7 @@ func main() {
 	log.Printf("collecting metrics alert service shutting down")
 
 	close(stopSaving)
-	if err := storage.SaveMetricsToFile(filePath); err != nil {
+	if err := storage.SaveLoadMetrics(filePath, "save"); err != nil {
 		log.Printf("Failed to save metrics on shutdown: %v", err)
 	}
 
@@ -91,7 +92,7 @@ func StartAutoSave(storage *storage.MemStorage, filePath string, interval int, s
 	for {
 		select {
 		case <-ticker.C:
-			if err := storage.SaveMetricsToFile(filePath); err != nil {
+			if err := storage.SaveLoadMetrics(filePath, "save"); err != nil {
 				log.Printf("Failed to save metrics to file: %v", err)
 			} else {
 				log.Println("Metrics successfully saved to a file.")

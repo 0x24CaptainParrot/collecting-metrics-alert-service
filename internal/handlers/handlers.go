@@ -31,6 +31,7 @@ func (h *Handler) UpdateMetricHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	ctx := r.Context()
 	switch storage.MetricType(metricType) {
 	case storage.Gauge:
 		value, err := strconv.ParseFloat(metricValue, 64)
@@ -39,7 +40,7 @@ func (h *Handler) UpdateMetricHandler(w http.ResponseWriter, r *http.Request) {
 			log.Printf("Error parsing gauge value %s: %v", metricValue, err)
 			return
 		}
-		if err := h.services.MetricStorageDB.UpdateGauge(metricName, value); err != nil {
+		if err := h.services.Storage.UpdateMetricValue(ctx, metricName, value); err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			log.Printf("Failed to update gauge: %s: %v", metricName, err)
 			return
@@ -51,7 +52,7 @@ func (h *Handler) UpdateMetricHandler(w http.ResponseWriter, r *http.Request) {
 			log.Printf("Error parsing counter value %s: %v", metricValue, err)
 			return
 		}
-		if err := h.services.MetricStorageDB.UpdateCounter(metricName, value); err != nil {
+		if err := h.services.Storage.UpdateMetricValue(ctx, metricName, value); err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			log.Printf("Failed to update counter: %s: %v", metricName, err)
 			return
@@ -63,7 +64,7 @@ func (h *Handler) UpdateMetricHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if StoreInterval == 0 || StoreInterval > 0 {
-		if err := h.services.MetricStorageDB.SaveMetricsToFile(FileStoragePath); err != nil {
+		if err := h.services.Storage.SaveLoadMetrics(FileStoragePath, "save"); err != nil {
 			log.Printf("Failed to save metrics to file: %v", err)
 		}
 	}
@@ -83,7 +84,8 @@ func (h *Handler) GetMetricValueHandler(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	metric, err := h.services.MetricStorageDB.GetMetric(metricName, metricType)
+	ctx := r.Context()
+	metric, err := h.services.Storage.GetMetric(ctx, metricName, metricType)
 	if err != nil {
 		http.Error(w, "metric not found", http.StatusNotFound)
 		log.Printf("Metric not found: %s %s", metricType, metricName)
@@ -99,7 +101,8 @@ func (h *Handler) GetMetricValueHandler(w http.ResponseWriter, r *http.Request) 
 func (h *Handler) GetAllMetricsStatic(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html")
 
-	metrics, err := h.services.MetricStorageDB.GetMetrics()
+	ctx := r.Context()
+	metrics, err := h.services.Storage.GetMetrics(ctx)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -124,6 +127,7 @@ func (h *Handler) UpdateMetricJSONHandler(w http.ResponseWriter, r *http.Request
 		return
 	}
 
+	ctx := r.Context()
 	var metric models.Metrics
 	if err := json.NewDecoder(r.Body).Decode(&metric); err != nil {
 		http.Error(w, "invalid data was given", http.StatusBadRequest)
@@ -136,7 +140,7 @@ func (h *Handler) UpdateMetricJSONHandler(w http.ResponseWriter, r *http.Request
 			http.Error(w, "missing value for gauge type", http.StatusBadRequest)
 			return
 		}
-		if err := h.services.MetricStorageDB.UpdateGauge(metric.ID, *metric.Value); err != nil {
+		if err := h.services.Storage.UpdateMetricValue(ctx, metric.ID, *metric.Value); err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
@@ -145,7 +149,7 @@ func (h *Handler) UpdateMetricJSONHandler(w http.ResponseWriter, r *http.Request
 			http.Error(w, "missing value for counter type", http.StatusBadRequest)
 			return
 		}
-		if err := h.services.MetricStorageDB.UpdateCounter(metric.ID, *metric.Delta); err != nil {
+		if err := h.services.Storage.UpdateMetricValue(ctx, metric.ID, *metric.Delta); err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
@@ -155,7 +159,7 @@ func (h *Handler) UpdateMetricJSONHandler(w http.ResponseWriter, r *http.Request
 	}
 
 	if StoreInterval == 0 || StoreInterval > 0 {
-		if err := h.services.MetricStorageDB.SaveMetricsToFile(FileStoragePath); err != nil {
+		if err := h.services.Storage.SaveLoadMetrics(FileStoragePath, "save"); err != nil {
 			log.Printf("Failed to save metrics to file: %v", err)
 		}
 	}
@@ -176,6 +180,7 @@ func (h *Handler) GetMetricJSONHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	ctx := r.Context()
 	var metric models.Metrics
 	if err := json.NewDecoder(r.Body).Decode(&metric); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
@@ -188,7 +193,7 @@ func (h *Handler) GetMetricJSONHandler(w http.ResponseWriter, r *http.Request) {
 
 	switch metric.MType {
 	case "gauge":
-		val, err := h.services.MetricStorageDB.GetMetric(metric.ID, storage.Gauge)
+		val, err := h.services.Storage.GetMetric(ctx, metric.ID, storage.Gauge)
 		if err != nil {
 			http.Error(w, "metric not found", http.StatusNotFound)
 			return
@@ -196,7 +201,7 @@ func (h *Handler) GetMetricJSONHandler(w http.ResponseWriter, r *http.Request) {
 		value := val.(float64)
 		resultMetric.Value = &value
 	case "counter":
-		val, err := h.services.MetricStorageDB.GetMetric(metric.ID, storage.Counter)
+		val, err := h.services.Storage.GetMetric(ctx, metric.ID, storage.Counter)
 		if err != nil {
 			http.Error(w, "metric not found", http.StatusNotFound)
 			return
@@ -224,6 +229,7 @@ func (h *Handler) UpdateBatchMetricsJSONHandler(w http.ResponseWriter, r *http.R
 		return
 	}
 
+	ctx := r.Context()
 	var metrics []models.Metrics
 	if err := json.NewDecoder(r.Body).Decode(&metrics); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -237,7 +243,7 @@ func (h *Handler) UpdateBatchMetricsJSONHandler(w http.ResponseWriter, r *http.R
 				http.Error(w, "missing value for gauge type", http.StatusBadRequest)
 				return
 			}
-			if err := h.services.MetricStorageDB.UpdateGauge(metric.ID, *metric.Value); err != nil {
+			if err := h.services.Storage.UpdateMetricValue(ctx, metric.ID, *metric.Value); err != nil {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 				return
 			}
@@ -247,7 +253,7 @@ func (h *Handler) UpdateBatchMetricsJSONHandler(w http.ResponseWriter, r *http.R
 				http.Error(w, "missing value for counter type", http.StatusBadRequest)
 				return
 			}
-			if err := h.services.MetricStorageDB.UpdateCounter(metric.ID, *metric.Delta); err != nil {
+			if err := h.services.Storage.UpdateMetricValue(ctx, metric.ID, *metric.Delta); err != nil {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 				return
 			}
@@ -263,13 +269,13 @@ func (h *Handler) UpdateBatchMetricsJSONHandler(w http.ResponseWriter, r *http.R
 }
 
 func (h *Handler) PingDatabase(w http.ResponseWriter, r *http.Request) {
-	if h.services.MetricStorageDB == nil {
+	if h.services.Storage == nil {
 		http.Error(w, "database is not configured", http.StatusServiceUnavailable)
 		log.Println("Ping request received, but databse is not configured.")
 		return
 	}
 
-	dbStorage, ok := h.services.MetricStorageDB.(*service.StorageDBService)
+	dbStorage, ok := h.services.Storage.(*service.StorageDBService)
 	if !ok || dbStorage.DB() == nil {
 		http.Error(w, "database connection is disabled", http.StatusServiceUnavailable)
 		log.Println("Ping request received, but database is not connected.")
