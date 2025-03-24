@@ -28,3 +28,11 @@ func NewRepository(db *sql.DB) *Repository {
 		StorageDB: NewStoragePostgres(db),
 	}
 }
+
+func (r *Repository) DB() *sql.DB {
+	return r.StorageDB.(*StoragePostgres).DB()
+}
+
+func (r *Repository) Ping() error {
+	return r.StorageDB.(*StoragePostgres).Ping()
+}

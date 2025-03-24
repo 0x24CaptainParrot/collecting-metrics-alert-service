@@ -25,11 +25,11 @@ func (sDBServ *StorageDBService) GetMetrics(ctx context.Context) (map[string]int
 }
 
 func (sDBServ *StorageDBService) DB() *sql.DB {
-	return sDBServ.repo.(*repository.StoragePostgres).DB()
+	return sDBServ.repo.(*repository.Repository).DB()
 }
 
 func (sDBServ *StorageDBService) Ping() error {
-	return sDBServ.repo.(*repository.StoragePostgres).Ping()
+	return sDBServ.repo.(*repository.Repository).Ping()
 }
 
 func (sDBServ *StorageDBService) UpdateMetricValue(ctx context.Context, name string, value interface{}) error {
