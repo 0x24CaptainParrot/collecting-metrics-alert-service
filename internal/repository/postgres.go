@@ -4,9 +4,11 @@ import (
 	"database/sql"
 	"fmt"
 	"log"
+	"os"
 	"time"
 
 	_ "github.com/jackc/pgx/v5/stdlib"
+	"github.com/pressly/goose"
 )
 
 func NewPostgresDB(dsn string) (*sql.DB, error) {
@@ -31,4 +33,21 @@ func NewPostgresDB(dsn string) (*sql.DB, error) {
 	log.Println("Successfully connected to the database.")
 
 	return db, nil
+}
+
+func RunMigrations(db *sql.DB, migrationsDir string) error {
+	if db == nil {
+		return fmt.Errorf("cannot run migrations, db is nil")
+	}
+
+	if _, err := os.Stat(migrationsDir); os.IsNotExist(err) {
+		return fmt.Errorf("migrations directory not found: %s", migrationsDir)
+	}
+
+	if err := goose.Up(db, migrationsDir); err != nil {
+		return fmt.Errorf("goose migration failed: %v", err)
+	}
+
+	log.Println("Migrations applied successfully.")
+	return nil
 }

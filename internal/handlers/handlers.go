@@ -40,7 +40,7 @@ func (h *Handler) UpdateMetricHandler(w http.ResponseWriter, r *http.Request) {
 			log.Printf("Error parsing gauge value %s: %v", metricValue, err)
 			return
 		}
-		if err := h.services.Storage.UpdateMetricValue(ctx, metricName, value); err != nil {
+		if err := h.services.Storage.UpdateGauge(ctx, metricName, value); err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			log.Printf("Failed to update gauge: %s: %v", metricName, err)
 			return
@@ -52,7 +52,7 @@ func (h *Handler) UpdateMetricHandler(w http.ResponseWriter, r *http.Request) {
 			log.Printf("Error parsing counter value %s: %v", metricValue, err)
 			return
 		}
-		if err := h.services.Storage.UpdateMetricValue(ctx, metricName, value); err != nil {
+		if err := h.services.Storage.UpdateCounter(ctx, metricName, value); err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			log.Printf("Failed to update counter: %s: %v", metricName, err)
 			return
@@ -140,7 +140,7 @@ func (h *Handler) UpdateMetricJSONHandler(w http.ResponseWriter, r *http.Request
 			http.Error(w, "missing value for gauge type", http.StatusBadRequest)
 			return
 		}
-		if err := h.services.Storage.UpdateMetricValue(ctx, metric.ID, *metric.Value); err != nil {
+		if err := h.services.Storage.UpdateGauge(ctx, metric.ID, *metric.Value); err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
@@ -149,7 +149,7 @@ func (h *Handler) UpdateMetricJSONHandler(w http.ResponseWriter, r *http.Request
 			http.Error(w, "missing value for counter type", http.StatusBadRequest)
 			return
 		}
-		if err := h.services.Storage.UpdateMetricValue(ctx, metric.ID, *metric.Delta); err != nil {
+		if err := h.services.Storage.UpdateCounter(ctx, metric.ID, *metric.Delta); err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
@@ -243,7 +243,7 @@ func (h *Handler) UpdateBatchMetricsJSONHandler(w http.ResponseWriter, r *http.R
 				http.Error(w, "missing value for gauge type", http.StatusBadRequest)
 				return
 			}
-			if err := h.services.Storage.UpdateMetricValue(ctx, metric.ID, *metric.Value); err != nil {
+			if err := h.services.Storage.UpdateGauge(ctx, metric.ID, *metric.Value); err != nil {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 				return
 			}
@@ -253,7 +253,7 @@ func (h *Handler) UpdateBatchMetricsJSONHandler(w http.ResponseWriter, r *http.R
 				http.Error(w, "missing value for counter type", http.StatusBadRequest)
 				return
 			}
-			if err := h.services.Storage.UpdateMetricValue(ctx, metric.ID, *metric.Delta); err != nil {
+			if err := h.services.Storage.UpdateCounter(ctx, metric.ID, *metric.Delta); err != nil {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 				return
 			}

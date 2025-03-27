@@ -32,8 +32,12 @@ func (sDBServ *StorageDBService) Ping() error {
 	return sDBServ.repo.(*repository.Repository).Ping()
 }
 
-func (sDBServ *StorageDBService) UpdateMetricValue(ctx context.Context, name string, value interface{}) error {
-	return sDBServ.repo.UpdateMetricValue(ctx, name, value)
+func (sDBServ *StorageDBService) UpdateGauge(ctx context.Context, name string, value float64) error {
+	return sDBServ.repo.UpdateGauge(ctx, name, value)
+}
+
+func (sDBServ *StorageDBService) UpdateCounter(ctx context.Context, name string, value int64) error {
+	return sDBServ.repo.UpdateCounter(ctx, name, value)
 }
 
 func (sDBServ *StorageDBService) SaveLoadMetrics(filePath string, operation string) error {

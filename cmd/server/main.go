@@ -24,6 +24,13 @@ func main() {
 		log.Fatalf("failed to initialize db: %s", err.Error())
 	}
 	defer db.Close()
+
+	if db != nil {
+		if err := repository.RunMigrations(db, "../../internal/schema"); err != nil {
+			log.Fatalf("failed to run migrations: %v", err)
+		}
+	}
+
 	if db == nil {
 		log.Println("Database is disabled. Running without db integration.")
 	}

@@ -22,8 +22,12 @@ func (s *StorageService) GetMetrics(ctx context.Context) (map[string]interface{}
 	return s.st.GetMetrics(ctx)
 }
 
-func (s *StorageService) UpdateMetricValue(ctx context.Context, name string, value interface{}) error {
-	return s.st.UpdateMetricValue(ctx, name, value)
+func (s *StorageService) UpdateGauge(ctx context.Context, name string, value float64) error {
+	return s.st.UpdateGauge(ctx, name, value)
+}
+
+func (s *StorageService) UpdateCounter(ctx context.Context, name string, value int64) error {
+	return s.st.UpdateCounter(ctx, name, value)
 }
 
 func (s *StorageService) SaveLoadMetrics(filePath string, operation string) error {

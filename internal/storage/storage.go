@@ -3,6 +3,7 @@ package storage
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"sync"
@@ -30,23 +31,29 @@ func NewMemStorage() *MemStorage {
 	}
 }
 
-func (ms *MemStorage) UpdateMetricValue(ctx context.Context, name string, value interface{}) error {
+func (ms *MemStorage) UpdateGauge(ctx context.Context, name string, value float64) error {
+	if value < 0 {
+		return errors.New("given gauge value cannot be negative")
+	}
+
 	ms.mu.Lock()
 	defer ms.mu.Unlock()
+	ms.gauges[name] = value
+	return nil
+}
 
-	switch v := value.(type) {
-	case float64:
-		ms.gauges[name] = v
-		return nil
-	case int64:
-		if _, exists := ms.counters[name]; !exists {
-			ms.counters[name] = 0
-		}
-		ms.counters[name] += v
-		return nil
-	default:
-		return fmt.Errorf("invalid metric type was given: %v", v)
+func (ms *MemStorage) UpdateCounter(ctx context.Context, name string, value int64) error {
+	if value < 0 {
+		return errors.New("given counter value cannot be negative")
 	}
+
+	ms.mu.Lock()
+	defer ms.mu.Unlock()
+	if _, exists := ms.counters[name]; !exists {
+		ms.counters[name] = 0
+	}
+	ms.counters[name] += value
+	return nil
 }
 
 func (ms *MemStorage) GetMetric(ctx context.Context, name string, metricType MetricType) (interface{}, error) {

@@ -23,48 +23,32 @@ func NewStoragePostgres(db *sql.DB) *StoragePostgres {
 		return nil
 	}
 
-	st := &StoragePostgres{db: db}
-	if err := st.CreateTables(); err != nil {
-		log.Fatalf("Error creating tables in db.")
-	}
-	return st
+	return &StoragePostgres{db: db}
 }
 
-func (st *StoragePostgres) CreateTables() error {
+const UpdateGaugeQuery = `INSERT INTO metrics (id, type, value) VALUES ($1, 'gauge', $2) ON CONFLICT (id) DO UPDATE SET value = $2`
+
+func (sp *StoragePostgres) UpdateGauge(ctx context.Context, name string, value float64) error {
 	return DoDBWithRetry(func() error {
-		_, err := st.db.Exec(`
-			CREATE TABLE IF NOT EXISTS metrics (
-				id TEXT PRIMARY KEY,
-				type TEXT NOT NULL CHECK (type IN ('gauge', 'counter')),
-				value DOUBLE PRECISION,
-				delta BIGINT
-			);`)
+		_, err := sp.db.ExecContext(ctx, UpdateGaugeQuery, name, value)
 		return err
 	})
 }
 
-func (sp *StoragePostgres) UpdateMetricValue(ctx context.Context, name string, value interface{}) error {
+const UpdateCounterQuery = `INSERT INTO metrics (id, type, delta) VALUES ($1, 'counter', $2) ON CONFLICT (id) DO UPDATE SET delta = metrics.delta + $2`
+
+func (sp *StoragePostgres) UpdateCounter(ctx context.Context, name string, value int64) error {
 	return DoDBWithRetry(func() error {
-		switch v := value.(type) {
-		case float64:
-			_, err := sp.db.ExecContext(ctx, `INSERT INTO metrics (id, type, value) 
-									VALUES ($1, 'gauge', $2) ON CONFLICT (id) 
-								DO UPDATE SET value = $2`, name, v)
-			return err
-		case int64:
-			_, err := sp.db.ExecContext(ctx, `INSERT INTO metrics (id, type, delta)
-									VALUES ($1, 'counter', $2) ON CONFLICT (id)
-								DO UPDATE SET delta = metrics.delta + $2`, name, v)
-			return err
-		default:
-			return fmt.Errorf("invalid metric type was given: %v", v)
-		}
+		_, err := sp.db.ExecContext(ctx, UpdateCounterQuery, name, value)
+		return err
 	})
 }
 
 func (sp *StoragePostgres) SaveLoadMetrics(filePath string, operation string) error {
 	return storage.NewMemStorage().SaveLoadMetrics(filePath, operation)
 }
+
+const GetMetricQuery = `SELECT type, value, delta FROM metrics WHERE id = $1`
 
 func (sp *StoragePostgres) GetMetric(ctx context.Context, name string, metricType storage.MetricType) (interface{}, error) {
 	var res interface{}
@@ -73,7 +57,7 @@ func (sp *StoragePostgres) GetMetric(ctx context.Context, name string, metricTyp
 		var gaugeValue sql.NullFloat64
 		var counterValue sql.NullInt64
 
-		row := sp.db.QueryRowContext(ctx, "SELECT type, value, delta FROM metrics WHERE id = $1", name)
+		row := sp.db.QueryRowContext(ctx, GetMetricQuery, name)
 		scanErr := row.Scan(&mType, &gaugeValue, &counterValue)
 		if scanErr != nil {
 			return scanErr
@@ -95,11 +79,13 @@ func (sp *StoragePostgres) GetMetric(ctx context.Context, name string, metricTyp
 	return res, nil
 }
 
+const GetMetricsQuery = `SELECT id, type, value, delta FROM metrics`
+
 func (sp *StoragePostgres) GetMetrics(ctx context.Context) (map[string]interface{}, error) {
 	metrics := make(map[string]interface{})
 
 	err := DoDBWithRetry(func() error {
-		rows, err := sp.db.QueryContext(ctx, "SELECT id, type, value, delta FROM metrics")
+		rows, err := sp.db.QueryContext(ctx, GetMetricsQuery)
 		if err != nil {
 			log.Printf("Error querying metrics: %v", err)
 			return err
