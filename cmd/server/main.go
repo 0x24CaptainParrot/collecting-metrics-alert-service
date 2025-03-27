@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"os"
 	"os/signal"
@@ -134,6 +135,7 @@ func getMigrationsPath() string {
 
 	rootPath := filepath.Join(parts[:rootIndex+1]...)
 	migrationsPath := filepath.Join(string(filepath.Separator), rootPath, "internal", "schema")
+	fmt.Println(migrationsPath)
 
 	return migrationsPath
 }
