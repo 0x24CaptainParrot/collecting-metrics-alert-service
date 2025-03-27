@@ -2,11 +2,11 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"log"
 	"os"
 	"os/signal"
 	"path/filepath"
+	"strings"
 	"syscall"
 	"time"
 
@@ -27,14 +27,8 @@ func main() {
 	}
 	defer db.Close()
 
-	wd, err := os.Getwd()
-	fmt.Println(wd)
-	if err != nil {
-		log.Fatalf("failed to get working directory: %v", err)
-	}
-
 	if db != nil {
-		if err := repository.RunMigrations(db, filepath.Join(wd, "..", "..", "internal", "schema")); err != nil {
+		if err := repository.RunMigrations(db, getMigrationsPath()); err != nil {
 			log.Fatalf("failed to run migrations: %v", err)
 		}
 	}
@@ -116,4 +110,30 @@ func StartAutoSave(storage *storage.MemStorage, filePath string, interval int, s
 			return
 		}
 	}
+}
+
+func getMigrationsPath() string {
+	wd, err := os.Getwd()
+	if err != nil {
+		log.Fatalf("failed to get working dir: %v", err)
+	}
+
+	rootMarker := "collecting-metrics-alert-service"
+	parts := strings.Split(wd, string(os.PathSeparator))
+	var rootIndex int
+	for i, part := range parts {
+		if part == rootMarker {
+			rootIndex = i
+			break
+		}
+	}
+
+	if rootIndex == 0 {
+		log.Fatalf("project root (%s) not found in path: %s", rootMarker, wd)
+	}
+
+	rootPath := filepath.Join(parts[:rootIndex+1]...)
+	migrationsPath := filepath.Join(string(filepath.Separator), rootPath, "internal", "schema")
+
+	return migrationsPath
 }
