@@ -2,9 +2,11 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"syscall"
 	"time"
 
@@ -25,8 +27,14 @@ func main() {
 	}
 	defer db.Close()
 
+	wd, err := os.Getwd()
+	fmt.Println(wd)
+	if err != nil {
+		log.Fatalf("failed to get working directory: %v", err)
+	}
+
 	if db != nil {
-		if err := repository.RunMigrations(db, "../../internal/schema"); err != nil {
+		if err := repository.RunMigrations(db, filepath.Join(wd, "..", "..", "internal", "schema")); err != nil {
 			log.Fatalf("failed to run migrations: %v", err)
 		}
 	}
