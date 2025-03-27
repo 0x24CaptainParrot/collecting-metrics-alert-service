@@ -27,11 +27,11 @@ func main() {
 	}
 	defer db.Close()
 
-	// if db != nil {
-	// 	if err := repository.RunMigrations(db, getMigrationsPath()); err != nil {
-	// 		log.Fatalf("failed to run migrations: %v", err)
-	// 	}
-	// }
+	if db != nil {
+		if err := repository.RunMigrations(db, getMigrationsPath()); err != nil {
+			log.Fatalf("failed to run migrations: %v", err)
+		}
+	}
 
 	if db == nil {
 		log.Println("Database is disabled. Running without db integration.")
@@ -119,7 +119,7 @@ func getMigrationsPath() string {
 	}
 
 	rootMarker := "collecting-metrics-alert-service"
-	idx := strings.Index(wd, rootMarker)
+	idx := strings.LastIndex(wd, rootMarker)
 	if idx == -1 {
 		log.Fatalf("project root marker '%s' not found in: %s", rootMarker, wd)
 	}
