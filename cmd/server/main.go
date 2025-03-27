@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"log"
 	"os"
 	"os/signal"
@@ -120,22 +119,13 @@ func getMigrationsPath() string {
 	}
 
 	rootMarker := "collecting-metrics-alert-service"
-	parts := strings.Split(wd, string(os.PathSeparator))
-	var rootIndex int
-	for i, part := range parts {
-		if part == rootMarker {
-			rootIndex = i
-			break
-		}
+	idx := strings.Index(wd, rootMarker)
+	if idx == -1 {
+		log.Fatalf("project root marker '%s' not found in: %s", rootMarker, wd)
 	}
 
-	if rootIndex == 0 {
-		log.Fatalf("project root (%s) not found in path: %s", rootMarker, wd)
-	}
-
-	rootPath := filepath.Join(parts[:rootIndex+1]...)
-	migrationsPath := filepath.Join(string(filepath.Separator), rootPath, "internal", "schema")
-	fmt.Println(migrationsPath)
+	rootPath := wd[:idx+len(rootMarker)]
+	migrationsPath := filepath.Join(rootPath, "internal", "schema")
 
 	return migrationsPath
 }
