@@ -1,9 +1,14 @@
 package storage
 
 import (
+	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"os"
 	"sync"
+
+	"github.com/0x24CaptainParrot/collecting-metrics-alert-service.git/internal/models"
 )
 
 type MetricType string
@@ -26,7 +31,7 @@ func NewMemStorage() *MemStorage {
 	}
 }
 
-func (ms *MemStorage) UpdateGauge(name string, value float64) error {
+func (ms *MemStorage) UpdateGauge(ctx context.Context, name string, value float64) error {
 	if value < 0 {
 		return errors.New("given gauge value cannot be negative")
 	}
@@ -37,7 +42,7 @@ func (ms *MemStorage) UpdateGauge(name string, value float64) error {
 	return nil
 }
 
-func (ms *MemStorage) UpdateCounter(name string, value int64) error {
+func (ms *MemStorage) UpdateCounter(ctx context.Context, name string, value int64) error {
 	if value < 0 {
 		return errors.New("given counter value cannot be negative")
 	}
@@ -51,7 +56,7 @@ func (ms *MemStorage) UpdateCounter(name string, value int64) error {
 	return nil
 }
 
-func (ms *MemStorage) GetMetric(name string, metricType MetricType) (interface{}, error) {
+func (ms *MemStorage) GetMetric(ctx context.Context, name string, metricType MetricType) (interface{}, error) {
 	ms.mu.RLock()
 	defer ms.mu.RUnlock()
 
@@ -73,7 +78,7 @@ func (ms *MemStorage) GetMetric(name string, metricType MetricType) (interface{}
 	}
 }
 
-func (ms *MemStorage) GetMetrics() map[string]interface{} {
+func (ms *MemStorage) GetMetrics(ctx context.Context) (map[string]interface{}, error) {
 	ms.mu.RLock()
 	defer ms.mu.RUnlock()
 
@@ -86,5 +91,61 @@ func (ms *MemStorage) GetMetrics() map[string]interface{} {
 		metrics[k] = v
 	}
 
-	return metrics
+	return metrics, nil
+}
+
+func (ms *MemStorage) SaveLoadMetrics(filePath string, operation string) error {
+	ms.mu.Lock()
+	defer ms.mu.Unlock()
+
+	switch operation {
+	case "save":
+		metrics := make([]models.Metrics, 0)
+
+		for name, value := range ms.gauges {
+			metrics = append(metrics, models.Metrics{
+				ID:    name,
+				MType: "gauge",
+				Value: &value,
+			})
+		}
+		for name, value := range ms.counters {
+			metrics = append(metrics, models.Metrics{
+				ID:    name,
+				MType: "counter",
+				Delta: &value,
+			})
+		}
+
+		data, err := json.MarshalIndent(metrics, "", "   ")
+		if err != nil {
+			return err
+		}
+		return os.WriteFile(filePath, data, 0644)
+
+	case "load":
+		data, err := os.ReadFile(filePath)
+		if err != nil {
+			if os.IsNotExist(err) {
+				return nil
+			}
+			return err
+		}
+
+		var metrics []models.Metrics
+		if err := json.Unmarshal(data, &metrics); err != nil {
+			return err
+		}
+
+		for _, m := range metrics {
+			if m.MType == "gauge" && m.Value != nil {
+				ms.gauges[m.ID] = *m.Value
+			} else if m.MType == "counter" && m.Delta != nil {
+				ms.counters[m.ID] = *m.Delta
+			}
+		}
+		return nil
+	default:
+		return fmt.Errorf("invalid operation or incorrect filepath was given")
+	}
 }

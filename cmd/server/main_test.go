@@ -1,10 +1,12 @@
 package main
 
 import (
+	"context"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
+	"github.com/0x24CaptainParrot/collecting-metrics-alert-service.git/internal/handlers"
 	"github.com/0x24CaptainParrot/collecting-metrics-alert-service.git/internal/service"
 	"github.com/0x24CaptainParrot/collecting-metrics-alert-service.git/internal/storage"
 	"github.com/stretchr/testify/assert"
@@ -64,21 +66,22 @@ func TestUpdateMetricHandler(t *testing.T) {
 	}
 
 	storage := storage.NewMemStorage()
-	services := service.NewService(storage)
-	router := NewRouter(services)
+	// services := service.NewService(nil, storage)
+	services := service.NewService(nil, storage)
+	handler := handlers.NewHandler(services)
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			req := httptest.NewRequest(http.MethodPost, tc.url, nil)
 			w := httptest.NewRecorder()
-			router.ServeHTTP(w, req)
+			handler.InitHandlerRoutes().ServeHTTP(w, req)
 
 			res := w.Result()
 			assert.Equal(t, tc.want.code, res.StatusCode)
 
 			// Проверка правильности сохранения метрики в хранилище
 			if tc.want.code == http.StatusOK {
-				metrics := storage.GetMetrics()
+				metrics, _ := storage.GetMetrics(context.Background())
 
 				switch tc.metricType {
 				case "gauge":
