@@ -253,11 +253,6 @@ func (a *Agent) Start() {
 			}
 			fmt.Println("Metrics have been collected.")
 		case <-tickerReport.C:
-			// a.SendMetrics(metrics)
-			// a.SendJSONMetrics(metrics)
-			// a.SendGzipJSONMetrics(metrics)
-			// a.SendBatchJSONMetrics(metrics)
-			//
 			a.SendMetricsRetry(metrics)
 			a.SendJSONMetricsRetry(metrics)
 			a.SendGzipJSONMetricsRetry(metrics)

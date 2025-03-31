@@ -5,9 +5,12 @@ import (
 	"compress/gzip"
 	"encoding/json"
 	"fmt"
+	"log"
 	"strconv"
 
+	"github.com/0x24CaptainParrot/collecting-metrics-alert-service.git/internal/config"
 	"github.com/0x24CaptainParrot/collecting-metrics-alert-service.git/internal/models"
+	"github.com/0x24CaptainParrot/collecting-metrics-alert-service.git/internal/utils"
 )
 
 func (a *Agent) SendMetricsRetry(metrics map[string]interface{}) {
@@ -26,10 +29,20 @@ func (a *Agent) SendMetricsRetry(metrics map[string]interface{}) {
 			continue
 		}
 
+		headers := map[string]string{}
+		if config.AgentCfg.Key != "" {
+			hash, err := utils.ComputeSHA256("", config.AgentCfg.Key)
+			if err != nil {
+				log.Fatal("error computing the hash")
+			}
+			headers["HashSHA256"] = hash
+		}
+
 		url := fmt.Sprintf("%s/update/%s/%s/%s", a.serverAddress, metricType, metricName, valueStr)
 		DoRequestWithRetry(func() error {
 			resp, err := a.client.R().
 				SetHeader("Content-Type", "text/plain").
+				SetHeaders(headers).
 				Post(url)
 
 			if err != nil {
@@ -67,10 +80,24 @@ func (a *Agent) SendJSONMetricsRetry(metrics map[string]interface{}) {
 			continue
 		}
 
+		headers := map[string]string{}
+		if config.AgentCfg.Key != "" {
+			data, err := json.Marshal(metric)
+			if err != nil {
+				log.Fatal("error encoding metric")
+			}
+			hash, err := utils.ComputeSHA256(string(data), config.AgentCfg.Key)
+			if err != nil {
+				log.Fatal("error computing the hash")
+			}
+			headers["HashSHA256"] = hash
+		}
+
 		url := fmt.Sprintf("%s/update/", a.serverAddress)
 		DoRequestWithRetry(func() error {
 			resp, err := a.client.R().
 				SetHeader("Content-Type", "application/json").
+				SetHeaders(headers).
 				SetBody(metric).
 				Post(url)
 
@@ -109,10 +136,23 @@ func (a *Agent) SendGzipJSONMetricsRetry(metrics map[string]interface{}) {
 			continue
 		}
 
+		headers := map[string]string{}
+		data, err := json.Marshal(metric)
+		if err != nil {
+			fmt.Println("Failed to encode metric:", err)
+		}
+		if config.AgentCfg.Key != "" {
+			hash, err := utils.ComputeSHA256(string(data), config.AgentCfg.Key)
+			if err != nil {
+				log.Fatal("error computing the hash")
+			}
+			headers["HashSHA256"] = hash
+		}
+
 		var buff bytes.Buffer
 		gz := gzip.NewWriter(&buff)
-		if err := json.NewEncoder(gz).Encode(metric); err != nil {
-			fmt.Println("Failed to encode metric:", err)
+		if _, err := gz.Write(data); err != nil {
+			fmt.Println("Failed to compress metric:", err)
 			continue
 		}
 		gz.Close()
@@ -122,6 +162,7 @@ func (a *Agent) SendGzipJSONMetricsRetry(metrics map[string]interface{}) {
 			resp, err := a.client.R().
 				SetHeader("Content-Type", "application/json").
 				SetHeader("Content-Encoding", "gzip").
+				SetHeaders(headers).
 				SetBody(buff.Bytes()).
 				Post(url)
 
@@ -165,10 +206,24 @@ func (a *Agent) SendBatchJSONMetricsRetry(metrics map[string]interface{}) {
 		batchMetrics = append(batchMetrics, metric)
 	}
 
+	headers := map[string]string{}
+	if config.AgentCfg.Key != "" {
+		data, err := json.Marshal(batchMetrics)
+		if err != nil {
+			log.Fatal("error encoding batch of metrics")
+		}
+		hash, err := utils.ComputeSHA256(string(data), config.AgentCfg.Key)
+		if err != nil {
+			log.Fatal("error computing the hash")
+		}
+		headers["HashSHA256"] = hash
+	}
+
 	url := fmt.Sprintf("%s/updates/", a.serverAddress)
 	DoRequestWithRetry(func() error {
 		resp, err := a.client.R().
 			SetHeader("Content-Type", "application/json").
+			SetHeaders(headers).
 			SetBody(batchMetrics).
 			Post(url)
 

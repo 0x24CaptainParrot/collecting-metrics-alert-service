@@ -23,6 +23,7 @@ type ServerConfig struct {
 	FileStoragePath   string `env:"FILE_STORAGE_PATH"`
 	Restore           bool   `env:"RESTORE"`
 	DbDsn             string `env:"DATABASE_DSN"`
+	Key               string `env:"KEY"`
 }
 
 var ServerCfg ServerConfig
@@ -34,6 +35,7 @@ func ParseServerFlags() {
 	flag.StringVar(&ServerCfg.FileStoragePath, "f", fileStoragePathDefault, "path to the file for saving metrics")
 	flag.BoolVar(&ServerCfg.Restore, "r", restoreDefault, "whether or not to download metrics at server startup")
 	flag.StringVar(&ServerCfg.DbDsn, "d", "", "data source name")
+	flag.StringVar(&ServerCfg.Key, "k", "", "secret key")
 	flag.Parse()
 
 	if len(flag.Args()) > 0 {

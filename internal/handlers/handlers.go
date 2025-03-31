@@ -1,15 +1,20 @@
 package handlers
 
 import (
+	"bytes"
+	"crypto/hmac"
 	"encoding/json"
 	"fmt"
+	"io"
 	"log"
 	"net/http"
 	"strconv"
 
+	"github.com/0x24CaptainParrot/collecting-metrics-alert-service.git/internal/config"
 	"github.com/0x24CaptainParrot/collecting-metrics-alert-service.git/internal/models"
 	"github.com/0x24CaptainParrot/collecting-metrics-alert-service.git/internal/service"
 	"github.com/0x24CaptainParrot/collecting-metrics-alert-service.git/internal/storage"
+	"github.com/0x24CaptainParrot/collecting-metrics-alert-service.git/internal/utils"
 	"github.com/go-chi/chi/v5"
 )
 
@@ -28,6 +33,18 @@ func (h *Handler) UpdateMetricHandler(w http.ResponseWriter, r *http.Request) {
 	if metricType == "" || metricName == "" || metricValue == "" {
 		http.Error(w, "missing metric ID or value", http.StatusBadRequest)
 		log.Printf("Metric ID, type or value is missing in the request")
+		return
+	}
+
+	body, err := io.ReadAll(r.Body)
+	if err != nil {
+		http.Error(w, "failed to read body", http.StatusBadRequest)
+		return
+	}
+	r.Body = io.NopCloser(bytes.NewReader(body))
+	if !verifyRequestSignature(r, body) {
+		http.Error(w, "invalid hash", http.StatusBadRequest)
+		log.Fatal("invalid hash. not equal")
 		return
 	}
 
@@ -67,6 +84,15 @@ func (h *Handler) UpdateMetricHandler(w http.ResponseWriter, r *http.Request) {
 		if err := h.services.Storage.SaveLoadMetrics(FileStoragePath, "save"); err != nil {
 			log.Printf("Failed to save metrics to file: %v", err)
 		}
+	}
+
+	if config.ServerCfg.Key != "" {
+		hash, err := utils.ComputeSHA256("", config.ServerCfg.Key)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		w.Header().Set("HashSHA256", hash)
 	}
 
 	w.Header().Set("Content-Type", "text/plain")
@@ -127,6 +153,19 @@ func (h *Handler) UpdateMetricJSONHandler(w http.ResponseWriter, r *http.Request
 		return
 	}
 
+	body, err := io.ReadAll(r.Body)
+	if err != nil {
+		http.Error(w, "failed to read body", http.StatusBadRequest)
+		return
+	}
+
+	r.Body = io.NopCloser(bytes.NewReader(body))
+	if !verifyRequestSignature(r, body) {
+		http.Error(w, "invalid hash", http.StatusBadRequest)
+		log.Fatal("invalid hash. not equal")
+		return
+	}
+
 	ctx := r.Context()
 	var metric models.Metrics
 	if err := json.NewDecoder(r.Body).Decode(&metric); err != nil {
@@ -162,6 +201,20 @@ func (h *Handler) UpdateMetricJSONHandler(w http.ResponseWriter, r *http.Request
 		if err := h.services.Storage.SaveLoadMetrics(FileStoragePath, "save"); err != nil {
 			log.Printf("Failed to save metrics to file: %v", err)
 		}
+	}
+
+	if config.ServerCfg.Key != "" {
+		data, err := json.Marshal(metric)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		hash, err := utils.ComputeSHA256(data, config.ServerCfg.Key)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		w.Header().Set("HashSHA256", hash)
 	}
 
 	w.Header().Set("Content-Type", "application/json")
@@ -229,6 +282,19 @@ func (h *Handler) UpdateBatchMetricsJSONHandler(w http.ResponseWriter, r *http.R
 		return
 	}
 
+	body, err := io.ReadAll(r.Body)
+	if err != nil {
+		http.Error(w, "error reading body", http.StatusBadRequest)
+		return
+	}
+
+	r.Body = io.NopCloser(bytes.NewReader(body))
+	if !verifyRequestSignature(r, body) {
+		http.Error(w, "invalid hash", http.StatusBadRequest)
+		log.Fatal("invalid hash. not equal")
+		return
+	}
+
 	ctx := r.Context()
 	var metrics []models.Metrics
 	if err := json.NewDecoder(r.Body).Decode(&metrics); err != nil {
@@ -263,6 +329,20 @@ func (h *Handler) UpdateBatchMetricsJSONHandler(w http.ResponseWriter, r *http.R
 		}
 	}
 
+	if config.ServerCfg.Key != "" {
+		data, err := json.Marshal(metrics)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		hash, err := utils.ComputeSHA256(data, config.ServerCfg.Key)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		w.Header().Set("HashSHA256", hash)
+	}
+
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(metrics)
@@ -288,4 +368,13 @@ func (h *Handler) PingDatabase(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.WriteHeader(http.StatusOK)
+}
+
+func verifyRequestSignature(r *http.Request, body []byte) bool {
+	expected := r.Header.Get("HashSHA256")
+	if config.ServerCfg.Key == "" || expected == "" {
+		return true
+	}
+	actual, _ := utils.ComputeSHA256(string(body), config.ServerCfg.Key)
+	return hmac.Equal([]byte(actual), []byte(expected))
 }
