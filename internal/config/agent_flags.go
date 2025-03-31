@@ -20,6 +20,7 @@ type AgentConfig struct {
 	EndpointAddr   string `env:"ADDRESS"`
 	ReportInterval int    `env:"REPORT_INTERVAL"`
 	PollInterval   int    `env:"POLL_INTERVAL"`
+	Key            string `env:"KEY"`
 }
 
 var AgentCfg AgentConfig
@@ -28,6 +29,7 @@ func ParseAgentFlags() {
 	flag.StringVar(&AgentCfg.EndpointAddr, "a", agentDefaultAddress, "endpoint addr of the server")
 	flag.IntVar(&AgentCfg.ReportInterval, "r", agentDefaultReportInt, "report interval")
 	flag.IntVar(&AgentCfg.PollInterval, "p", agentDefaultPollInt, "poll interval")
+	flag.StringVar(&AgentCfg.Key, "k", "", "secret key")
 	flag.Parse()
 
 	if len(flag.Args()) > 0 {
