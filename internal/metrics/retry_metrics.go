@@ -8,7 +8,6 @@ import (
 	"log"
 	"strconv"
 
-	"github.com/0x24CaptainParrot/collecting-metrics-alert-service.git/internal/config"
 	"github.com/0x24CaptainParrot/collecting-metrics-alert-service.git/internal/models"
 	"github.com/0x24CaptainParrot/collecting-metrics-alert-service.git/internal/utils"
 )
@@ -30,8 +29,8 @@ func (a *Agent) SendMetricsRetry(metrics map[string]interface{}) {
 		}
 
 		headers := map[string]string{}
-		if config.AgentCfg.Key != "" {
-			hash, err := utils.ComputeSHA256("", config.AgentCfg.Key)
+		if a.key != "" {
+			hash, err := utils.ComputeSHA256("", a.key)
 			if err != nil {
 				log.Fatal("error computing the hash")
 			}
@@ -81,12 +80,12 @@ func (a *Agent) SendJSONMetricsRetry(metrics map[string]interface{}) {
 		}
 
 		headers := map[string]string{}
-		if config.AgentCfg.Key != "" {
+		if a.key != "" {
 			data, err := json.Marshal(metric)
 			if err != nil {
 				log.Fatal("error encoding metric")
 			}
-			hash, err := utils.ComputeSHA256(string(data), config.AgentCfg.Key)
+			hash, err := utils.ComputeSHA256(string(data), a.key)
 			if err != nil {
 				log.Fatal("error computing the hash")
 			}
@@ -141,8 +140,8 @@ func (a *Agent) SendGzipJSONMetricsRetry(metrics map[string]interface{}) {
 		if err != nil {
 			fmt.Println("Failed to encode metric:", err)
 		}
-		if config.AgentCfg.Key != "" {
-			hash, err := utils.ComputeSHA256(string(data), config.AgentCfg.Key)
+		if a.key != "" {
+			hash, err := utils.ComputeSHA256(string(data), a.key)
 			if err != nil {
 				log.Fatal("error computing the hash")
 			}
@@ -207,12 +206,12 @@ func (a *Agent) SendBatchJSONMetricsRetry(metrics map[string]interface{}) {
 	}
 
 	headers := map[string]string{}
-	if config.AgentCfg.Key != "" {
+	if a.key != "" {
 		data, err := json.Marshal(batchMetrics)
 		if err != nil {
 			log.Fatal("error encoding batch of metrics")
 		}
-		hash, err := utils.ComputeSHA256(string(data), config.AgentCfg.Key)
+		hash, err := utils.ComputeSHA256(string(data), a.key)
 		if err != nil {
 			log.Fatal("error computing the hash")
 		}

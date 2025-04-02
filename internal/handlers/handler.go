@@ -3,6 +3,7 @@ package handlers
 import (
 	"net/http"
 
+	"github.com/0x24CaptainParrot/collecting-metrics-alert-service.git/internal/config"
 	"github.com/0x24CaptainParrot/collecting-metrics-alert-service.git/internal/logger"
 	"github.com/0x24CaptainParrot/collecting-metrics-alert-service.git/internal/middlewares"
 	"github.com/0x24CaptainParrot/collecting-metrics-alert-service.git/internal/service"
@@ -12,10 +13,14 @@ import (
 
 type Handler struct {
 	services *service.Service
+	srvCfg   *config.ServerConfig
 }
 
-func NewHandler(service *service.Service) *Handler {
-	return &Handler{services: service}
+func NewHandler(service *service.Service, srvCfg *config.ServerConfig) *Handler {
+	return &Handler{
+		services: service,
+		srvCfg:   srvCfg,
+	}
 }
 
 func (h *Handler) InitHandlerRoutes() http.Handler {

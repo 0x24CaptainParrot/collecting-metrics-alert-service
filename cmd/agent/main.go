@@ -9,13 +9,14 @@ import (
 )
 
 func main() {
-	config.ParseAgentFlags()
+	agentCfg := config.ParseAgentFlags()
 
 	agent := metrics.NewAgent(
-		config.AgentCfg.EndpointAddr,
-		time.Duration(config.AgentCfg.PollInterval)*time.Second,
-		time.Duration(config.AgentCfg.ReportInterval)*time.Second,
-		config.AgentCfg.RateLimit)
+		agentCfg.EndpointAddr,
+		time.Duration(agentCfg.PollInterval)*time.Second,
+		time.Duration(agentCfg.ReportInterval)*time.Second,
+		agentCfg.RateLimit,
+		agentCfg.Key)
 
 	fmt.Println("Starting agent")
 	agent.Start()

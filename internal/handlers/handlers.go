@@ -10,16 +10,12 @@ import (
 	"net/http"
 	"strconv"
 
-	"github.com/0x24CaptainParrot/collecting-metrics-alert-service.git/internal/config"
 	"github.com/0x24CaptainParrot/collecting-metrics-alert-service.git/internal/models"
 	"github.com/0x24CaptainParrot/collecting-metrics-alert-service.git/internal/service"
 	"github.com/0x24CaptainParrot/collecting-metrics-alert-service.git/internal/storage"
 	"github.com/0x24CaptainParrot/collecting-metrics-alert-service.git/internal/utils"
 	"github.com/go-chi/chi/v5"
 )
-
-var StoreInterval int
-var FileStoragePath string
 
 func (h *Handler) UpdateMetricHandler(w http.ResponseWriter, r *http.Request) {
 	metricType := chi.URLParam(r, "type")
@@ -42,7 +38,7 @@ func (h *Handler) UpdateMetricHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	r.Body = io.NopCloser(bytes.NewReader(body))
-	if !verifyRequestSignature(r, body) {
+	if !verifyRequestSignature(r, body, h.srvCfg.Key) {
 		http.Error(w, "invalid hash", http.StatusBadRequest)
 		log.Fatal("invalid hash. not equal")
 		return
@@ -80,14 +76,14 @@ func (h *Handler) UpdateMetricHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if StoreInterval == 0 || StoreInterval > 0 {
-		if err := h.services.Storage.SaveLoadMetrics(FileStoragePath, "save"); err != nil {
+	if h.srvCfg.StoreInterval == 0 || h.srvCfg.StoreInterval > 0 {
+		if err := h.services.Storage.SaveLoadMetrics(h.srvCfg.FileStoragePath, "save"); err != nil {
 			log.Printf("Failed to save metrics to file: %v", err)
 		}
 	}
 
-	if config.ServerCfg.Key != "" {
-		hash, err := utils.ComputeSHA256("", config.ServerCfg.Key)
+	if h.srvCfg.Key != "" {
+		hash, err := utils.ComputeSHA256("", h.srvCfg.Key)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
@@ -160,7 +156,7 @@ func (h *Handler) UpdateMetricJSONHandler(w http.ResponseWriter, r *http.Request
 	}
 
 	r.Body = io.NopCloser(bytes.NewReader(body))
-	if !verifyRequestSignature(r, body) {
+	if !verifyRequestSignature(r, body, h.srvCfg.Key) {
 		http.Error(w, "invalid hash", http.StatusBadRequest)
 		log.Fatal("invalid hash. not equal")
 		return
@@ -197,19 +193,19 @@ func (h *Handler) UpdateMetricJSONHandler(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	if StoreInterval == 0 || StoreInterval > 0 {
-		if err := h.services.Storage.SaveLoadMetrics(FileStoragePath, "save"); err != nil {
+	if h.srvCfg.StoreInterval == 0 || h.srvCfg.StoreInterval > 0 {
+		if err := h.services.Storage.SaveLoadMetrics(h.srvCfg.FileStoragePath, "save"); err != nil {
 			log.Printf("Failed to save metrics to file: %v", err)
 		}
 	}
 
-	if config.ServerCfg.Key != "" {
+	if h.srvCfg.Key != "" {
 		data, err := json.Marshal(metric)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
-		hash, err := utils.ComputeSHA256(data, config.ServerCfg.Key)
+		hash, err := utils.ComputeSHA256(data, h.srvCfg.Key)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
@@ -289,7 +285,7 @@ func (h *Handler) UpdateBatchMetricsJSONHandler(w http.ResponseWriter, r *http.R
 	}
 
 	r.Body = io.NopCloser(bytes.NewReader(body))
-	if !verifyRequestSignature(r, body) {
+	if !verifyRequestSignature(r, body, h.srvCfg.Key) {
 		http.Error(w, "invalid hash", http.StatusBadRequest)
 		log.Fatal("invalid hash. not equal")
 		return
@@ -329,13 +325,13 @@ func (h *Handler) UpdateBatchMetricsJSONHandler(w http.ResponseWriter, r *http.R
 		}
 	}
 
-	if config.ServerCfg.Key != "" {
+	if h.srvCfg.Key != "" {
 		data, err := json.Marshal(metrics)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
-		hash, err := utils.ComputeSHA256(data, config.ServerCfg.Key)
+		hash, err := utils.ComputeSHA256(data, h.srvCfg.Key)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
@@ -370,11 +366,11 @@ func (h *Handler) PingDatabase(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 }
 
-func verifyRequestSignature(r *http.Request, body []byte) bool {
+func verifyRequestSignature(r *http.Request, body []byte, key string) bool {
 	expected := r.Header.Get("HashSHA256")
-	if config.ServerCfg.Key == "" || expected == "" {
+	if key == "" || expected == "" {
 		return true
 	}
-	actual, _ := utils.ComputeSHA256(string(body), config.ServerCfg.Key)
+	actual, _ := utils.ComputeSHA256(string(body), key)
 	return hmac.Equal([]byte(actual), []byte(expected))
 }

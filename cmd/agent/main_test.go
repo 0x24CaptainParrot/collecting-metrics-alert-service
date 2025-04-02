@@ -48,6 +48,7 @@ func TestAgentFunctions(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			agentCfg := config.ParseAgentFlags()
 			// Моковый сервер для тестирования отправки метрик
 			ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				assert.Equal(t, tc.want.contentType, r.Header.Get("Content-Type"), "Content-Type should be text/plain")
@@ -56,7 +57,7 @@ func TestAgentFunctions(t *testing.T) {
 			defer ts.Close()
 
 			// Запускаем агента с адресом тестового сервера
-			agent := metrics.NewAgent(ts.URL, 2*time.Second, 10*time.Second, config.AgentCfg.RateLimit)
+			agent := metrics.NewAgent(ts.URL, 2*time.Second, 10*time.Second, agentCfg.RateLimit, agentCfg.Key)
 
 			// Устанавливаем начальный pollCount и проверяем его значение перед сбором метрик
 			agent.SetPollCount(tc.pollBefore)

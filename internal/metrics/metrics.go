@@ -25,17 +25,19 @@ type Agent struct {
 	reportInterval time.Duration
 	serverAddress  string
 	pollCount      int64
+	key            string
 	rateLimit      int
 	metricQueue    chan map[string]interface{}
 }
 
-func NewAgent(serverAddress string, pollInterval, reportInterval time.Duration, rateLimit int) *Agent {
+func NewAgent(serverAddress string, pollInterval, reportInterval time.Duration, rateLimit int, key string) *Agent {
 	return &Agent{
 		client:         resty.New(),
 		pollInterval:   pollInterval,
 		reportInterval: reportInterval,
 		serverAddress:  serverAddress,
 		rateLimit:      rateLimit,
+		key:            key,
 	}
 }
 

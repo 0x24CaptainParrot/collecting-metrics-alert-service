@@ -26,9 +26,8 @@ type ServerConfig struct {
 	Key               string `env:"KEY"`
 }
 
-var ServerCfg ServerConfig
-
-func ParseServerFlags() {
+func ParseServerFlags() *ServerConfig {
+	var ServerCfg ServerConfig
 	flag.StringVar(&ServerCfg.RunServerAddrFlag, "a", serverDefaultAddress, "server listens on this port")
 	flag.StringVar(&ServerCfg.LogLevel, "l", logDefaultLevel, "log level")
 	flag.UintVar(&ServerCfg.StoreInterval, "i", storeIntervalDefault, "interval in seconds for saving metrics")
@@ -49,4 +48,5 @@ func ParseServerFlags() {
 	}
 
 	log.Printf("Server will run on %s", ServerCfg.RunServerAddrFlag)
+	return &ServerCfg
 }

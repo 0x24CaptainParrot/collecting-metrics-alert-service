@@ -24,9 +24,8 @@ type AgentConfig struct {
 	RateLimit      int    `env:"RATE_LIMIT"`
 }
 
-var AgentCfg AgentConfig
-
-func ParseAgentFlags() {
+func ParseAgentFlags() *AgentConfig {
+	var AgentCfg AgentConfig
 	flag.StringVar(&AgentCfg.EndpointAddr, "a", agentDefaultAddress, "endpoint addr of the server")
 	flag.IntVar(&AgentCfg.ReportInterval, "r", agentDefaultReportInt, "report interval")
 	flag.IntVar(&AgentCfg.PollInterval, "p", agentDefaultPollInt, "poll interval")
@@ -57,6 +56,7 @@ func ParseAgentFlags() {
 	log.Printf("Agent's reportInt: %d", AgentCfg.ReportInterval)
 	log.Printf("Agent's pollInt: %d", AgentCfg.PollInterval)
 	log.Printf("Agent's rate limit: %d", AgentCfg.RateLimit)
+	return &AgentCfg
 }
 
 func startsWithHTTP(addr string) bool {
