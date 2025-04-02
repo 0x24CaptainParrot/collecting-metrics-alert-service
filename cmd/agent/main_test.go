@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/0x24CaptainParrot/collecting-metrics-alert-service.git/internal/config"
 	"github.com/0x24CaptainParrot/collecting-metrics-alert-service.git/internal/metrics"
 	"github.com/stretchr/testify/assert"
 )
@@ -55,7 +56,7 @@ func TestAgentFunctions(t *testing.T) {
 			defer ts.Close()
 
 			// Запускаем агента с адресом тестового сервера
-			agent := metrics.NewAgent(ts.URL, 2*time.Second, 10*time.Second)
+			agent := metrics.NewAgent(ts.URL, 2*time.Second, 10*time.Second, config.AgentCfg.RateLimit)
 
 			// Устанавливаем начальный pollCount и проверяем его значение перед сбором метрик
 			agent.SetPollCount(tc.pollBefore)

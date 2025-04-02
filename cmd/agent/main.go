@@ -14,7 +14,8 @@ func main() {
 	agent := metrics.NewAgent(
 		config.AgentCfg.EndpointAddr,
 		time.Duration(config.AgentCfg.PollInterval)*time.Second,
-		time.Duration(config.AgentCfg.ReportInterval)*time.Second)
+		time.Duration(config.AgentCfg.ReportInterval)*time.Second,
+		config.AgentCfg.RateLimit)
 
 	fmt.Println("Starting agent")
 	agent.Start()

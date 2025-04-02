@@ -12,6 +12,9 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/shirou/gopsutil/cpu"
+	"github.com/shirou/gopsutil/v3/mem"
+
 	"github.com/0x24CaptainParrot/collecting-metrics-alert-service.git/internal/models"
 	"github.com/go-resty/resty/v2"
 )
@@ -22,14 +25,17 @@ type Agent struct {
 	reportInterval time.Duration
 	serverAddress  string
 	pollCount      int64
+	rateLimit      int
+	metricQueue    chan map[string]interface{}
 }
 
-func NewAgent(serverAddress string, pollInterval, reportInterval time.Duration) *Agent {
+func NewAgent(serverAddress string, pollInterval, reportInterval time.Duration, rateLimit int) *Agent {
 	return &Agent{
 		client:         resty.New(),
 		pollInterval:   pollInterval,
 		reportInterval: reportInterval,
 		serverAddress:  serverAddress,
+		rateLimit:      rateLimit,
 	}
 }
 
@@ -39,6 +45,25 @@ func (a *Agent) GetPollCount() int64 {
 
 func (a *Agent) SetPollCount(value int64) {
 	a.pollCount = value
+}
+
+func (a *Agent) CollectGopsutilMetrics() map[string]interface{} {
+	result := make(map[string]interface{})
+
+	vmStat, err := mem.VirtualMemory()
+	if err == nil {
+		result["TotalMemory"] = float64(vmStat.Total)
+		result["FreeMemory"] = float64(vmStat.Free)
+	}
+
+	cpuPercents, err := cpu.Percent(0, true)
+	if err == nil {
+		for i, perc := range cpuPercents {
+			result[fmt.Sprintf("CPUutilization%d", i+1)] = perc
+		}
+	}
+
+	return result
 }
 
 func (a *Agent) CollectRuntimeMetrics() map[string]interface{} {
@@ -238,27 +263,58 @@ func (a *Agent) SendBatchJSONMetrics(metrics map[string]interface{}) {
 	}
 }
 
+func (a *Agent) worker() {
+	for metrics := range a.metricQueue {
+		a.SendMetricsRetry(metrics)
+		a.SendJSONMetricsRetry(metrics)
+		a.SendGzipJSONMetricsRetry(metrics)
+		a.SendBatchJSONMetricsRetry(metrics)
+	}
+}
+
 func (a *Agent) Start() {
-	tickerPoll := time.NewTicker(a.pollInterval)
-	tickerReport := time.NewTicker(a.reportInterval)
+	a.metricQueue = make(chan map[string]interface{}, 100)
+	metricsMap := make(map[string]interface{})
 
-	metrics := make(map[string]interface{})
+	workers := a.rateLimit
+	if workers <= 0 {
+		workers = 5
+	}
 
-	for {
-		select {
-		case <-tickerPoll.C:
-			newMetrics := a.CollectRuntimeMetrics()
-			for k, v := range newMetrics {
-				metrics[k] = v
+	for i := 0; i < workers; i++ {
+		go a.worker()
+	}
+
+	go func() {
+		tickerPoll := time.NewTicker(a.pollInterval)
+		defer tickerPoll.Stop()
+
+		for {
+			<-tickerPoll.C
+			metrics := a.CollectRuntimeMetrics()
+			for k, v := range metrics {
+				metricsMap[k] = v
+			}
+			extraMetrics := a.CollectGopsutilMetrics()
+			for k, v := range extraMetrics {
+				metricsMap[k] = v
 			}
 			fmt.Println("Metrics have been collected.")
-		case <-tickerReport.C:
-			a.SendMetricsRetry(metrics)
-			a.SendJSONMetricsRetry(metrics)
-			a.SendGzipJSONMetricsRetry(metrics)
-			a.SendBatchJSONMetricsRetry(metrics)
-			fmt.Println("Metrics have been sent.")
 		}
+	}()
+
+	tickerReport := time.NewTicker(a.reportInterval)
+	defer tickerReport.Stop()
+
+	for {
+		<-tickerReport.C
+
+		snapshot := make(map[string]interface{}, len(metricsMap))
+		for k, v := range metricsMap {
+			snapshot[k] = v
+		}
+
+		a.metricQueue <- snapshot
 	}
 }
 
