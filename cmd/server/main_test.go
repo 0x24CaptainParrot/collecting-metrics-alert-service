@@ -77,6 +77,7 @@ func TestUpdateMetricHandler(t *testing.T) {
 			handler.InitHandlerRoutes().ServeHTTP(w, req)
 
 			res := w.Result()
+			defer res.Body.Close()
 			assert.Equal(t, tc.want.code, res.StatusCode)
 
 			// Проверка правильности сохранения метрики в хранилище
