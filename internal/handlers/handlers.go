@@ -1,8 +1,11 @@
 package handlers
 
 import (
+	"bytes"
+	"crypto/hmac"
 	"encoding/json"
 	"fmt"
+	"io"
 	"log"
 	"net/http"
 	"strconv"
@@ -10,11 +13,9 @@ import (
 	"github.com/0x24CaptainParrot/collecting-metrics-alert-service.git/internal/models"
 	"github.com/0x24CaptainParrot/collecting-metrics-alert-service.git/internal/service"
 	"github.com/0x24CaptainParrot/collecting-metrics-alert-service.git/internal/storage"
+	"github.com/0x24CaptainParrot/collecting-metrics-alert-service.git/internal/utils"
 	"github.com/go-chi/chi/v5"
 )
-
-var StoreInterval int
-var FileStoragePath string
 
 func (h *Handler) UpdateMetricHandler(w http.ResponseWriter, r *http.Request) {
 	metricType := chi.URLParam(r, "type")
@@ -28,6 +29,18 @@ func (h *Handler) UpdateMetricHandler(w http.ResponseWriter, r *http.Request) {
 	if metricType == "" || metricName == "" || metricValue == "" {
 		http.Error(w, "missing metric ID or value", http.StatusBadRequest)
 		log.Printf("Metric ID, type or value is missing in the request")
+		return
+	}
+
+	body, err := io.ReadAll(r.Body)
+	if err != nil {
+		http.Error(w, "failed to read body", http.StatusBadRequest)
+		return
+	}
+	r.Body = io.NopCloser(bytes.NewReader(body))
+	if !verifyRequestSignature(r, body, h.srvCfg.Key) {
+		http.Error(w, "invalid hash", http.StatusBadRequest)
+		log.Fatal("invalid hash. not equal")
 		return
 	}
 
@@ -63,10 +76,19 @@ func (h *Handler) UpdateMetricHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if StoreInterval == 0 || StoreInterval > 0 {
-		if err := h.services.Storage.SaveLoadMetrics(FileStoragePath, "save"); err != nil {
+	if h.srvCfg.StoreInterval == 0 || h.srvCfg.StoreInterval > 0 {
+		if err := h.services.Storage.SaveLoadMetrics(h.srvCfg.FileStoragePath, "save"); err != nil {
 			log.Printf("Failed to save metrics to file: %v", err)
 		}
+	}
+
+	if h.srvCfg.Key != "" {
+		hash, err := utils.ComputeSHA256("", h.srvCfg.Key)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		w.Header().Set("HashSHA256", hash)
 	}
 
 	w.Header().Set("Content-Type", "text/plain")
@@ -116,59 +138,6 @@ func (h *Handler) GetAllMetricsStatic(w http.ResponseWriter, r *http.Request) {
 }
 
 // json metric handlers/methods
-func (h *Handler) UpdateMetricJSONHandler(w http.ResponseWriter, r *http.Request) {
-	if r.ContentLength == 0 {
-		http.Error(w, "empty request body", http.StatusBadRequest)
-		return
-	}
-
-	if r.Header.Get("Content-Type") != "application/json" {
-		http.Error(w, "invalid media type was given", http.StatusUnsupportedMediaType)
-		return
-	}
-
-	ctx := r.Context()
-	var metric models.Metrics
-	if err := json.NewDecoder(r.Body).Decode(&metric); err != nil {
-		http.Error(w, "invalid data was given", http.StatusBadRequest)
-		return
-	}
-
-	switch metric.MType {
-	case "gauge":
-		if metric.Value == nil {
-			http.Error(w, "missing value for gauge type", http.StatusBadRequest)
-			return
-		}
-		if err := h.services.Storage.UpdateGauge(ctx, metric.ID, *metric.Value); err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-	case "counter":
-		if metric.Delta == nil {
-			http.Error(w, "missing value for counter type", http.StatusBadRequest)
-			return
-		}
-		if err := h.services.Storage.UpdateCounter(ctx, metric.ID, *metric.Delta); err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-	default:
-		http.Error(w, "invalid metric type", http.StatusBadRequest)
-		return
-	}
-
-	if StoreInterval == 0 || StoreInterval > 0 {
-		if err := h.services.Storage.SaveLoadMetrics(FileStoragePath, "save"); err != nil {
-			log.Printf("Failed to save metrics to file: %v", err)
-		}
-	}
-
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(metric)
-}
-
 func (h *Handler) GetMetricJSONHandler(w http.ResponseWriter, r *http.Request) {
 	if r.ContentLength == 0 {
 		http.Error(w, "empty request body", http.StatusBadRequest)
@@ -229,11 +198,35 @@ func (h *Handler) UpdateBatchMetricsJSONHandler(w http.ResponseWriter, r *http.R
 		return
 	}
 
+	body, err := io.ReadAll(r.Body)
+	if err != nil {
+		http.Error(w, "error reading body", http.StatusBadRequest)
+		return
+	}
+
+	r.Body = io.NopCloser(bytes.NewReader(body))
+	if !verifyRequestSignature(r, body, h.srvCfg.Key) {
+		http.Error(w, "invalid hash", http.StatusBadRequest)
+		log.Println("invalid hash signature. not equal")
+		return
+	}
+
+	body, err = io.ReadAll(r.Body)
+	if err != nil {
+		http.Error(w, "failed to read body", http.StatusBadRequest)
+		return
+	}
+
 	ctx := r.Context()
 	var metrics []models.Metrics
-	if err := json.NewDecoder(r.Body).Decode(&metrics); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
+	if err := json.Unmarshal(body, &metrics); err != nil {
+		var single models.Metrics
+		if err := json.Unmarshal(body, &single); err != nil {
+			http.Error(w, "invalid json structure", http.StatusInternalServerError)
+			log.Println("invalid json structure:", err)
+			return
+		}
+		metrics = append(metrics, single)
 	}
 
 	for _, metric := range metrics {
@@ -263,6 +256,20 @@ func (h *Handler) UpdateBatchMetricsJSONHandler(w http.ResponseWriter, r *http.R
 		}
 	}
 
+	if h.srvCfg.Key != "" {
+		data, err := json.Marshal(metrics)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		hash, err := utils.ComputeSHA256(data, h.srvCfg.Key)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		w.Header().Set("HashSHA256", hash)
+	}
+
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(metrics)
@@ -288,4 +295,13 @@ func (h *Handler) PingDatabase(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.WriteHeader(http.StatusOK)
+}
+
+func verifyRequestSignature(r *http.Request, body []byte, key string) bool {
+	expected := r.Header.Get("HashSHA256")
+	if key == "" || expected == "" {
+		return true
+	}
+	actual, _ := utils.ComputeSHA256(string(body), key)
+	return hmac.Equal([]byte(actual), []byte(expected))
 }

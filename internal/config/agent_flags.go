@@ -20,14 +20,17 @@ type AgentConfig struct {
 	EndpointAddr   string `env:"ADDRESS"`
 	ReportInterval int    `env:"REPORT_INTERVAL"`
 	PollInterval   int    `env:"POLL_INTERVAL"`
+	Key            string `env:"KEY"`
+	RateLimit      int    `env:"RATE_LIMIT"`
 }
 
-var AgentCfg AgentConfig
-
-func ParseAgentFlags() {
+func ParseAgentFlags() *AgentConfig {
+	var AgentCfg AgentConfig
 	flag.StringVar(&AgentCfg.EndpointAddr, "a", agentDefaultAddress, "endpoint addr of the server")
 	flag.IntVar(&AgentCfg.ReportInterval, "r", agentDefaultReportInt, "report interval")
 	flag.IntVar(&AgentCfg.PollInterval, "p", agentDefaultPollInt, "poll interval")
+	flag.StringVar(&AgentCfg.Key, "k", "", "secret key")
+	flag.IntVar(&AgentCfg.RateLimit, "l", 5, "rate limit")
 	flag.Parse()
 
 	if len(flag.Args()) > 0 {
@@ -52,6 +55,8 @@ func ParseAgentFlags() {
 	log.Printf("Agent will connect to %s", AgentCfg.EndpointAddr)
 	log.Printf("Agent's reportInt: %d", AgentCfg.ReportInterval)
 	log.Printf("Agent's pollInt: %d", AgentCfg.PollInterval)
+	log.Printf("Agent's rate limit: %d", AgentCfg.RateLimit)
+	return &AgentCfg
 }
 
 func startsWithHTTP(addr string) bool {

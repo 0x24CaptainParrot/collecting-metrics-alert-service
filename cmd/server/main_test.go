@@ -6,6 +6,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"github.com/0x24CaptainParrot/collecting-metrics-alert-service.git/internal/config"
 	"github.com/0x24CaptainParrot/collecting-metrics-alert-service.git/internal/handlers"
 	"github.com/0x24CaptainParrot/collecting-metrics-alert-service.git/internal/service"
 	"github.com/0x24CaptainParrot/collecting-metrics-alert-service.git/internal/storage"
@@ -66,9 +67,8 @@ func TestUpdateMetricHandler(t *testing.T) {
 	}
 
 	storage := storage.NewMemStorage()
-	// services := service.NewService(nil, storage)
 	services := service.NewService(nil, storage)
-	handler := handlers.NewHandler(services)
+	handler := handlers.NewHandler(services, config.ParseServerFlags())
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
@@ -77,6 +77,7 @@ func TestUpdateMetricHandler(t *testing.T) {
 			handler.InitHandlerRoutes().ServeHTTP(w, req)
 
 			res := w.Result()
+			defer res.Body.Close()
 			assert.Equal(t, tc.want.code, res.StatusCode)
 
 			// Проверка правильности сохранения метрики в хранилище
