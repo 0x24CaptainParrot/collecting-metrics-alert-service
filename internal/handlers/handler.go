@@ -31,7 +31,7 @@ func (h *Handler) InitHandlerRoutes() http.Handler {
 
 	r.Get("/ping", h.PingDatabase)
 	r.Post("/updates/", h.UpdateBatchMetricsJSONHandler)
-	r.Post("/update/", h.UpdateMetricJSONHandler)
+	r.Post("/update/", h.UpdateBatchMetricsJSONHandler)
 	r.Post("/value/", h.GetMetricJSONHandler)
 	r.Post("/update/{type}/{name}/{value}", h.UpdateMetricHandler)
 	r.Get("/value/{type}/{name}", h.GetMetricValueHandler)

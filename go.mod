@@ -1,6 +1,8 @@
 module github.com/0x24CaptainParrot/collecting-metrics-alert-service.git
 
-go 1.22
+go 1.23
+
+toolchain go1.23.2
 
 require (
 	github.com/caarlos0/env/v6 v6.10.1

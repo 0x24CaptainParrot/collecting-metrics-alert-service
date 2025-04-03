@@ -138,86 +138,6 @@ func (h *Handler) GetAllMetricsStatic(w http.ResponseWriter, r *http.Request) {
 }
 
 // json metric handlers/methods
-func (h *Handler) UpdateMetricJSONHandler(w http.ResponseWriter, r *http.Request) {
-	if r.ContentLength == 0 {
-		http.Error(w, "empty request body", http.StatusBadRequest)
-		return
-	}
-
-	if r.Header.Get("Content-Type") != "application/json" {
-		http.Error(w, "invalid media type was given", http.StatusUnsupportedMediaType)
-		return
-	}
-
-	body, err := io.ReadAll(r.Body)
-	if err != nil {
-		http.Error(w, "failed to read body", http.StatusBadRequest)
-		return
-	}
-
-	r.Body = io.NopCloser(bytes.NewReader(body))
-	if !verifyRequestSignature(r, body, h.srvCfg.Key) {
-		http.Error(w, "invalid hash", http.StatusBadRequest)
-		log.Fatal("invalid hash. not equal")
-		return
-	}
-
-	ctx := r.Context()
-	var metric models.Metrics
-	if err := json.NewDecoder(r.Body).Decode(&metric); err != nil {
-		http.Error(w, "invalid data was given", http.StatusBadRequest)
-		return
-	}
-
-	switch metric.MType {
-	case "gauge":
-		if metric.Value == nil {
-			http.Error(w, "missing value for gauge type", http.StatusBadRequest)
-			return
-		}
-		if err := h.services.Storage.UpdateGauge(ctx, metric.ID, *metric.Value); err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-	case "counter":
-		if metric.Delta == nil {
-			http.Error(w, "missing value for counter type", http.StatusBadRequest)
-			return
-		}
-		if err := h.services.Storage.UpdateCounter(ctx, metric.ID, *metric.Delta); err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-	default:
-		http.Error(w, "invalid metric type", http.StatusBadRequest)
-		return
-	}
-
-	if h.srvCfg.StoreInterval == 0 || h.srvCfg.StoreInterval > 0 {
-		if err := h.services.Storage.SaveLoadMetrics(h.srvCfg.FileStoragePath, "save"); err != nil {
-			log.Printf("Failed to save metrics to file: %v", err)
-		}
-	}
-
-	if h.srvCfg.Key != "" {
-		data, err := json.Marshal(metric)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-		hash, err := utils.ComputeSHA256(data, h.srvCfg.Key)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-		w.Header().Set("HashSHA256", hash)
-	}
-
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(metric)
-}
-
 func (h *Handler) GetMetricJSONHandler(w http.ResponseWriter, r *http.Request) {
 	if r.ContentLength == 0 {
 		http.Error(w, "empty request body", http.StatusBadRequest)
@@ -287,15 +207,26 @@ func (h *Handler) UpdateBatchMetricsJSONHandler(w http.ResponseWriter, r *http.R
 	r.Body = io.NopCloser(bytes.NewReader(body))
 	if !verifyRequestSignature(r, body, h.srvCfg.Key) {
 		http.Error(w, "invalid hash", http.StatusBadRequest)
-		log.Fatal("invalid hash. not equal")
+		log.Println("invalid hash signature. not equal")
+		return
+	}
+
+	body, err = io.ReadAll(r.Body)
+	if err != nil {
+		http.Error(w, "failed to read body", http.StatusBadRequest)
 		return
 	}
 
 	ctx := r.Context()
 	var metrics []models.Metrics
-	if err := json.NewDecoder(r.Body).Decode(&metrics); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
+	if err := json.Unmarshal(body, &metrics); err != nil {
+		var single models.Metrics
+		if err := json.Unmarshal(body, &single); err != nil {
+			http.Error(w, "invalid json structure", http.StatusInternalServerError)
+			log.Println("invalid json structure:", err)
+			return
+		}
+		metrics = append(metrics, single)
 	}
 
 	for _, metric := range metrics {
